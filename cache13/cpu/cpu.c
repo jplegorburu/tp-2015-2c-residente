@@ -2,7 +2,7 @@
 
 int main(int argv, char** argc) {
 
-
+	int socket_Plani;
 	//Archivo de Log
 	logger = log_create(NOMBRE_ARCHIVO_LOG, "planificador", true, LOG_LEVEL_TRACE);
 
@@ -11,10 +11,46 @@ int main(int argv, char** argc) {
 	// Levantamos el archivo de configuracion.
 	LevantarConfig();
 
+	if( conectarPlanificador(&socket_Plani))
+		{printf("Erro en conexion");}
 
+		//Fin conexion
 
 	return EXIT_SUCCESS;
 
+}
+
+int conectarPlanificador(int *socket_plani){
+	//Conecto al planificador
+	//ESTRUCTURA DE SOCKETS; EN ESTE CASO CONECTA CON NODO
+		//log_info(logger, "Intentando conectar a nodo\n");
+		//conectar con Nodo
+		struct addrinfo hints;
+		struct addrinfo *serverInfo;
+		int conexionOk = 0;
+
+		memset(&hints, 0, sizeof(hints));
+		hints.ai_family = AF_UNSPEC;// Permite que la maquina se encargue de verificar si usamos IPv4 o IPv6
+		hints.ai_socktype = SOCK_STREAM;	// Indica que usaremos el protocolo TCP
+
+
+		if (getaddrinfo(g_Ip_Planificador, g_Puerto_Planificador, &hints, &serverInfo) != 0) {// Carga en serverInfo los datos de la conexion
+			log_info(logger,
+					"ERROR: cargando datos de conexion socket_plani");
+		}
+
+		if ((*socket_plani = socket(serverInfo->ai_family, serverInfo->ai_socktype,
+				serverInfo->ai_protocol)) < 0) {
+			log_info(logger, "ERROR: crear socket_plani");
+		}
+		if (connect(*socket_plani, serverInfo->ai_addr, serverInfo->ai_addrlen)
+				< 0) {
+			log_info(logger, "ERROR: conectar socket_plani");
+		} else {
+			conexionOk = 1;
+		}
+		freeaddrinfo(serverInfo);	// No lo necesitamos mas
+		return conexionOk;
 }
 
 #if 1 // METODOS CONFIGURACION //

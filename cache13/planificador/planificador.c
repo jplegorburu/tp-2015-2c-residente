@@ -66,6 +66,7 @@ int operaciones_consola() {
 		printf("PATH ingresado: %s \n",comando[1]);
 	if (strcmp(comando[0], "correr") == 0)
 	{
+		send("Hola",4,0);
 		char* PATH = comando[1];
 		printf("Ejecutando comando correr mCod:%s\n",PATH);
 

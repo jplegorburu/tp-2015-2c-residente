@@ -51,4 +51,5 @@ typedef enum {
 
 void LevantarConfig();
 void Error(const char* mensaje, ...);
+int conectarPlanificador(int *socket_plani);
 
