@@ -72,7 +72,6 @@ int operaciones_consola() {
 		printf("PATH ingresado: %s \n",comando[1]);
 	if (strcmp(comando[0], "correr") == 0)
 	{
-		send("Hola",4,0);
 		char* PATH = comando[1];
 		printf("Ejecutando comando correr mCod:%s\n",PATH);
 
@@ -308,8 +307,8 @@ char* RecibirDatos(int socket, char *buffer, int *bytesRecibidos,int *cantRafaga
 		}
 	}
 
-	//log_trace(logger, "RECIBO DATOS. socket: %d. buffer: %s tamanio:%d", socket,
-		//	(char*) bufferAux, strlen(bufferAux));
+	log_trace(logger, "RECIBO DATOS. socket: %d. buffer: %s tamanio:%d", socket,
+	(char*) bufferAux, strlen(bufferAux));
 	return bufferAux; //--> buffer apunta al lugar de memoria que tiene el mensaje completo completo.
 }
 
