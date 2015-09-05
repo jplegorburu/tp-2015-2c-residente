@@ -76,7 +76,7 @@ int operaciones_consola() {
 		printf("Ejecutando comando correr mCod:%s\n",PATH);
 
 		char* ip="127.0.0.1";
-		char* puerto="3000"; //Harcodeado falta armar estructura de CPU que se conectan
+		char* puerto="4500"; //Harcodeado falta armar estructura de CPU que se conectan
 		char * buffer;
 		iniciarPrograma(PATH,ip,puerto,&buffer);
 
@@ -516,4 +516,24 @@ void ErrorFatal(const char* mensaje, ...) {
 	if (nuevo != NULL )
 		free(nuevo);
 	exit(EXIT_FAILURE);
+}
+
+char* obtenerSubBuffer(char *nombre){
+	// Esta funcion recibe un nombre y devuelve ese nombre de acuerdo al protocolo. Ej: carlos ------> 16carlos
+	char *aux=string_new();
+	int tamanioNombre=0;
+	float tam=0;
+	int cont=0;
+
+	tamanioNombre=strlen(nombre);
+	tam=tamanioNombre;
+	while(tam>=1){
+		tam=tam/10;
+		cont++;
+	}
+	string_append(&aux,string_itoa(cont));
+	string_append(&aux,string_itoa(tamanioNombre));
+	string_append(&aux,nombre);
+
+	return aux;
 }
