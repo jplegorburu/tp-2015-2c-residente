@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include <arpa/inet.h>
 
+
 #define COLOR_VERDE   			"\x1b[32m"
 #define DEFAULT   				"\x1b[0m"
 #define PATH_CONFIG 			"config.cfg"		//Ruta del config
@@ -44,6 +45,9 @@ char* g_Tlb_Habilitada;
 int g_Retardo_Memoria;
 int g_Ejecutando = 1;						// - Bandera que controla la ejecución o no del programa. Si está en 0 el programa se cierra.
 
+#define BUFFERSIZE 50
+pthread_t hOrquestadorConexiones;
+
 // TIPOS //
 typedef enum {
 	CantidadArgumentosIncorrecta,
@@ -57,4 +61,9 @@ typedef enum {
 int conectarConSwap(int *socket_swap);
 void LevantarConfig();
 void Error(const char* mensaje, ...);
-
+char* RecibirDatos(int socket, char *buffer, int *bytesRecibidos,int *cantRafaga,int *tamanio);
+int AtiendeCliente(void * arg);
+void HiloOrquestadorDeConexiones();
+int EnviarDatos(int socket, char *buffer, int cantidadDeBytesAEnviar);
+void CerrarSocket(int socket);
+void HiloOrquestadorDeConexiones();
