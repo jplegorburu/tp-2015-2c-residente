@@ -26,7 +26,7 @@
 #define PATH_CONFIG 			"config.cfg"		//Ruta del config
 #define NOMBRE_ARCHIVO_LOG 		"swap.log"			//Nombre de archivo de log		//Cantidad maxima de directorios
 #define TAMANIO_IP				16					//un string ejempl 192.168.001.123
-
+#define BUFFERSIZE 				50					//Tamaño del buffer
 
 /*********************/
 t_log* logger;								// Logger del commons
@@ -50,4 +50,8 @@ typedef enum {
 
 void LevantarConfig();
 void Error(const char* mensaje, ...);
+void escucharConexiones();
+char* RecibirDatos(int socket, char *buffer, int *bytesRecibidos,int *cantRafaga,int *tamanio);
+int EnviarDatos(int socket, char *buffer, int cantidadDeBytesAEnviar);
+void CerrarSocket(int socket);
 
