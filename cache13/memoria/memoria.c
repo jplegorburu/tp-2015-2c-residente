@@ -13,8 +13,8 @@ int main(int argv, char** argc) {
 	// Levantamos el archivo de configuracion.
 	LevantarConfig();
 
-	if( conectarConSwap(&socket_swap))
-			{printf("Error en conexion");}
+	//if( conectarConSwap(&socket_swap))
+		//	{printf("Error en conexion");}
 
 	//Hilo orquestador conexiones para escuchar
 		if ((iThreadOrquestador = pthread_create(&hOrquestadorConexiones, NULL, (void*) HiloOrquestadorDeConexiones, NULL )) != 0){
