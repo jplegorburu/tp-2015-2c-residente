@@ -59,4 +59,6 @@ int AtiendeCliente(void * arg);
 void HiloOrquestadorDeConexiones();
 int EnviarDatos(int socket, char *buffer, int cantidadDeBytesAEnviar);
 void CerrarSocket(int socket);
+int iniciarPrograma(char* nombreProg,char* ip,char*puerto,char**buffer);
+int conectarCpu(int * socket_Cpu, char* ipCpu, char* puertoCpu);
 

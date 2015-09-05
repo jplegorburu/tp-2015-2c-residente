@@ -75,6 +75,10 @@ int operaciones_consola() {
 		char* PATH = comando[1];
 		printf("Ejecutando comando correr mCod:%s\n",PATH);
 
+		char* ip="127.0.0.1";
+		char* puerto="3000"; //Harcodeado falta armar estructura de CPU que se conectan
+		char * buffer;
+		iniciarPrograma(PATH,ip,puerto,&buffer);
 
 		// do something
 	}
@@ -342,6 +346,94 @@ void CerrarSocket(int socket) {
 	close(socket);
 	//Traza("SOCKET SE CIERRA: (%d).", socket);
 	//log_trace(logger, "SOCKET SE CIERRA: (%d).", socket);
+}
+
+int iniciarPrograma(char* nombreProg,char* ip,char*puerto,char**buffer){
+	char* bufferE,*bufferR;
+	int socket,tamanioE,bytesRecibidos,cantRafaga=1,tamanio;
+	bufferE = string_new();
+	bufferR = string_new();
+	*buffer = string_new();
+	//SOLO UNA RAFAGA
+	string_append(&bufferE,"21");
+	string_append(&bufferE,obtenerSubBuffer(nombreProg));
+	if(conectarCpu(&socket, ip, puerto)) {
+		tamanioE = strlen(bufferE);
+		if(tamanioE==EnviarDatos(socket,bufferE,tamanioE)) {
+			bufferR = RecibirDatos(socket,bufferR, &bytesRecibidos,&cantRafaga,&tamanio);
+		//	printf("TAMANIO DE BUFFER:%d\n",tamanio);
+			if(bufferR!=NULL){
+				bufferE=string_new();
+				string_append(&bufferE,"1");
+				EnviarDatos(socket,bufferE,2);
+				cantRafaga = 2;
+				char *aux=malloc(tamanio+1);
+
+				char *bloque=malloc(tamanio+1);
+
+				memset(bloque,0,tamanio+1);
+
+				char *recibido=string_new();
+				memset(aux,0,tamanio+1);
+
+				ssize_t numBytesRecv = 0;
+
+				do{
+					numBytesRecv = numBytesRecv + recv(socket, aux, tamanio, 0);
+					if ( numBytesRecv < 0)
+						printf("ERROR\n");
+					string_append(&recibido,aux);
+					strcat(bloque,recibido);
+					free(recibido);
+					recibido=string_new();
+					//printf("------ %d -----\n",strlen(bloque));
+					memset(aux, 0, tamanio+1);
+
+				}while (numBytesRecv <tamanio);
+			//	printf("TAMANIO:%d NUMBYTESRECV:%d\n",tamanio,numBytesRecv);
+				*buffer=malloc(tamanio+1);
+				memset(*buffer,0,tamanio+1);
+				memcpy(*buffer,bloque,tamanio);
+				free(bloque);
+				//printf("BLOQUE:%d TAMANIO:%lu Recibido Ok\n",nroBloque,(long unsigned)strlen(*buffer));
+				return 1;
+			}
+		}
+	}
+	return 0;
+}
+
+int conectarCpu(int * socket_Cpu, char* ipCpu, char* puertoCpu) {
+
+	//ESTRUCTURA DE SOCKETS; EN ESTE CASO CONECTA CON CPU
+	//log_info(logger, "Intentando conectar a nodo\n");
+	//conectar con CPU
+	struct addrinfo hints;
+	struct addrinfo *serverInfo;
+	int conexionOk = 0;
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;// Permite que la maquina se encargue de verificar si usamos IPv4 o IPv6
+	hints.ai_socktype = SOCK_STREAM;	// Indica que usaremos el protocolo TCP
+
+
+	if (getaddrinfo(ipCpu, puertoCpu, &hints, &serverInfo) != 0) {// Carga en serverInfo los datos de la conexion
+		log_info(logger,
+				"ERROR: cargando datos de conexion socket_nodo");
+	}
+
+	if ((*socket_Cpu = socket(serverInfo->ai_family, serverInfo->ai_socktype,
+			serverInfo->ai_protocol)) < 0) {
+		log_info(logger, "ERROR: crear socket_Marta");
+	}
+	if (connect(*socket_Cpu, serverInfo->ai_addr, serverInfo->ai_addrlen)
+			< 0) {
+		log_info(logger, "ERROR: conectar socket_Nodo");
+	} else {
+		conexionOk = 1;
+	}
+	freeaddrinfo(serverInfo);	// No lo necesitamos mas
+	return conexionOk;
 }
 
 
