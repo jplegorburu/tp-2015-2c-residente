@@ -81,31 +81,40 @@ int main(int argv, char** argc) {
 								free(buffer);
 							buffer = string_new();
 
-							//Recibimos los datos del cliente
-							buffer = RecibirDatos(socket_client, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
+							if ((socket_client = accept(socket_host,(struct sockaddr *) &client_addr, &size_addr)) != -1) {
+								//Recibimos los datos del cliente
+															buffer = RecibirDatos(socket_client, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
 
 
-							if (bytesRecibidos > 0) {
-								//Analisamos que peticion nos está haciendo (obtenemos el comando)
-								emisor = ObtenerComandoMSJ(buffer);
-								//Evaluamos los comandos
-											switch (emisor) {
-											case 1:
-												mensaje="Ok";
-												break;
-											default:
-												break;
-											}
-								longitudBuffer=strlen(mensaje);
-								//printf("\nRespuesta: %s\n",buffer);
-								// Enviamos datos al cliente.
-								EnviarDatos(socket_client, mensaje,longitudBuffer);
-							} else
-								desconexionCliente = 1;
+															if (bytesRecibidos > 0) {
+																//Analisamos que peticion nos está haciendo (obtenemos el comando)
+																emisor = ObtenerComandoMSJ(buffer);
+																int funcion;
+																//Evaluamos los comandos
+																			switch (emisor) {
+																			case 1:
 
+																			funcion = ObtenerComandoMSJ(buffer+1);
+																		    if(funcion==2){
+																			printf("arrancando a correr programa\n");
+																							}
+																			mensaje="Ok";
+																			break;
+																			default:
+																				break;
+																			}
+																longitudBuffer=strlen(mensaje);
+																//printf("\nRespuesta: %s\n",buffer);
+																// Enviamos datos al cliente.
+																EnviarDatos(socket_client, mensaje,longitudBuffer);
+															} else
+																desconexionCliente = 1;
+
+														} else {
+										Error("ERROR AL ACEPTAR LA CONEXIÓN DE UN CLIENTE");
+									}
 						}
-
-						CerrarSocket(socket_client);
+							CerrarSocket(socket_client);
 
 
 }

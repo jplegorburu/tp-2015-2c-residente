@@ -13,16 +13,16 @@ int main(int argv, char** argc) {
 	// Levantamos el archivo de configuracion.
 	LevantarConfig();
 
-	//if( conectarConSwap(&socket_swap))
-		//	{printf("Error en conexion");}
+	if( conectarConSwap(&socket_swap))
+			{printf("Error en conexion");}
 
+	HiloOrquestadorDeConexiones();
 	//Hilo orquestador conexiones para escuchar
-		if ((iThreadOrquestador = pthread_create(&hOrquestadorConexiones, NULL, (void*) HiloOrquestadorDeConexiones, NULL )) != 0){
-			fprintf(stderr, (char *)NosePuedeCrearHilo, iThreadOrquestador);
-			exit(EXIT_FAILURE);
-		};
-
-		pthread_join(iThreadOrquestador, NULL );
+	//	if ((iThreadOrquestador = pthread_create(&hOrquestadorConexiones, NULL, (void*) HiloOrquestadorDeConexiones, NULL )) != 0){
+		//	fprintf(stderr, (char *)NosePuedeCrearHilo, iThreadOrquestador);
+			//exit(EXIT_FAILURE);
+		//};
+		//pthread_join(iThreadOrquestador, NULL );
 
 	return EXIT_SUCCESS;
 
@@ -139,7 +139,6 @@ void LevantarConfig() {
 }
 
 #endif
-
 
 void HiloOrquestadorDeConexiones() {
 
@@ -280,15 +279,23 @@ int AtiendeCliente(void * arg) {
 		//Recibimos los datos del cliente
 		buffer = RecibirDatos(socket, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
 
-
+		int funcion;
 		if (bytesRecibidos > 0) {
 			//Analisamos que peticion nos está haciendo (obtenemos el comando)
 			emisor = ObtenerComandoMSJ(buffer);
 			//Evaluamos los comandos
 						switch (emisor) {
 						case 1:
-							mensaje="Ok";
-							break;
+
+						funcion = ObtenerComandoMSJ(buffer+1);
+					    if(funcion==1){
+						printf("arrancando a correr programa\n");
+						}
+					    int socket_swap;
+					    conectarConSwap(&socket_swap);
+					    EnviarDatos(socket_swap, "12",2);
+						mensaje="Ok";
+						break;
 						default:
 							break;
 						}

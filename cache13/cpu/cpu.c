@@ -464,7 +464,9 @@ int AtiendeCliente(void * arg) {
 							funcion = ObtenerComandoMSJ(buffer+1);
 							if(funcion==1){
 								printf("arrancando a correr programa\n");
-
+								int socket_memoria;
+								conectarMemoria(&socket_memoria);
+								EnviarDatos(socket_memoria, "12",2);
 							}
 							mensaje="Ok";
 							break;

@@ -54,4 +54,5 @@ void escucharConexiones();
 char* RecibirDatos(int socket, char *buffer, int *bytesRecibidos,int *cantRafaga,int *tamanio);
 int EnviarDatos(int socket, char *buffer, int cantidadDeBytesAEnviar);
 void CerrarSocket(int socket);
-
+int ObtenerComandoMSJ(char* buffer);
+char* obtenerSubBuffer(char *nombre);
