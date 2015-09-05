@@ -28,13 +28,13 @@
 #define NOMBRE_ARCHIVO_LOG 		"planificador.log"			//Nombre de archivo de log
 #define MAXLINEA				1000				//Maximo de linea de consola				//Cantidad maxima de directorios
 #define TAMANIO_IP				16					//un string ejempl 192.168.001.123
-
+#define BUFFERSIZE 				50					//Tamaño del buffer
 
 /*********************/
 t_log* logger;								// Logger del commons
 FILE* g_ArchivoConsola;						// Archivo donde descargar info impresa por consola
 char* g_MensajeError;						//Mensaje de error global.
-pthread_t hConsola;	// Definimos los hilos principales
+pthread_t hConsola, hOrquestadorConexiones;	// Definimos los hilos principales
 int g_Puerto_Planificador;
 char* g_Algoritmo_Planificador;
 int g_Quantum_Planificador;
@@ -54,4 +54,9 @@ void HiloOrquestadorDeConexiones();
 int operaciones_consola();
 void LevantarConfig();
 void Error(const char* mensaje, ...);
+char* RecibirDatos(int socket, char *buffer, int *bytesRecibidos,int *cantRafaga,int *tamanio);
+int AtiendeCliente(void * arg);
+void HiloOrquestadorDeConexiones();
+int EnviarDatos(int socket, char *buffer, int cantidadDeBytesAEnviar);
+void CerrarSocket(int socket);
 
