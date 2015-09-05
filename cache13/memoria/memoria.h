@@ -54,6 +54,7 @@ typedef enum {
 	OtroError,
 } t_error;							//Tipo error
 
+int conectarConSwap(int *socket_swap);
 void LevantarConfig();
 void Error(const char* mensaje, ...);
 

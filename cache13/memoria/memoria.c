@@ -2,19 +2,50 @@
 
 int main(int argv, char** argc) {
 
-
+	int socket_swap;
 	//Archivo de Log
-	logger = log_create(NOMBRE_ARCHIVO_LOG, "planificador", true, LOG_LEVEL_TRACE);
+	logger = log_create(NOMBRE_ARCHIVO_LOG, "memoria", true, LOG_LEVEL_TRACE);
 
 
 
 	// Levantamos el archivo de configuracion.
 	LevantarConfig();
 
-
+	if( conectarConSwap(&socket_swap))
+			{printf("Error en conexion");}
 
 	return EXIT_SUCCESS;
 
+}
+
+int conectarConSwap(int *socket_swap){
+
+		struct addrinfo hints;
+		struct addrinfo *serverInfo;
+		int conexionOk = 0;
+
+		memset(&hints, 0, sizeof(hints));
+		hints.ai_family = AF_UNSPEC;// Permite que la maquina se encargue de verificar si usamos IPv4 o IPv6
+		hints.ai_socktype = SOCK_STREAM;	// Indica que usaremos el protocolo TCP
+
+
+		if (getaddrinfo(g_Ip_Swap, g_Puerto_Swap, &hints, &serverInfo) != 0) {// Carga en serverInfo los datos de la conexion
+			log_info(logger,
+					"ERROR: cargando datos de conexion socket_swap");
+		}
+
+		if ((*socket_swap = socket(serverInfo->ai_family, serverInfo->ai_socktype,
+				serverInfo->ai_protocol)) < 0) {
+			log_info(logger, "ERROR: crear socket_swap");
+		}
+		if (connect(*socket_swap, serverInfo->ai_addr, serverInfo->ai_addrlen)
+				< 0) {
+			log_info(logger, "ERROR: conectar socket_swap");
+		} else {
+			conexionOk = 1;
+		}
+		freeaddrinfo(serverInfo);	// No lo necesitamos mas
+		return conexionOk;
 }
 
 #if 1 // METODOS CONFIGURACION //
