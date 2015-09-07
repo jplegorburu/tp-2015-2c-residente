@@ -54,7 +54,7 @@ int main(int argv, char** argc) {
 				socket_client = accept(socket_host,(struct sockaddr *) &client_addr, &size_addr);
 
 
-				printf("Cliente conectado. Esperando mensajes:\n");
+				printf("Memoria conectada\n");
 
 				int longitudBuffer;
 

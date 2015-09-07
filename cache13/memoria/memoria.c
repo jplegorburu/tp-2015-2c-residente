@@ -14,7 +14,7 @@ int main(int argv, char** argc) {
 	LevantarConfig();
 
 	if( conectarConSwap(&socket_swap))
-			{printf("Error en conexion");}
+			{printf("Conexion con Swap exitosa.\n");}
 
 	HiloOrquestadorDeConexiones();
 	//Hilo orquestador conexiones para escuchar
@@ -288,16 +288,16 @@ int AtiendeCliente(void * arg) {
 						case 1:
 
 						funcion = ObtenerComandoMSJ(buffer+1);
-					    if(funcion==1){
+					    if(funcion==2){
 						printf("arrancando a correr programa\n");
-						}
-					    int socket_swap;
-					    conectarConSwap(&socket_swap);
-					    EnviarDatos(socket_swap, "12",2);
+						int socket_swap;
+						conectarConSwap(&socket_swap);
+						EnviarDatos(socket_swap, "12",2);
 						mensaje="Ok";
-						break;
+					    }
+					    break;
 						default:
-							break;
+						break;
 						}
 			longitudBuffer=strlen(mensaje);
 			//printf("\nRespuesta: %s\n",buffer);

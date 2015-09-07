@@ -4,6 +4,8 @@ int main(int argv, char** argc) {
 
 	int iThreadConsola, iThreadOrquestador;					//Hilo de consola
 
+	lista_cpu    = list_create();		//Lista de cpus
+
 	//Archivo de Log
 	logger = log_create(NOMBRE_ARCHIVO_LOG, "planificador", true, LOG_LEVEL_TRACE);
 
@@ -20,14 +22,14 @@ int main(int argv, char** argc) {
 		exit(EXIT_FAILURE);
 	};
 
-	//Hilo orquestador conexiones para escuchar a Marta o a Nodos
+	//Hilo orquestador conexiones para escuchar a Cpu
 	if ((iThreadOrquestador = pthread_create(&hOrquestadorConexiones, NULL, (void*) HiloOrquestadorDeConexiones, NULL )) != 0){
 		fprintf(stderr, (char *)NosePuedeCrearHilo, iThreadOrquestador);
 		exit(EXIT_FAILURE);
 	};
 
 	pthread_join(hConsola, NULL );
-	pthread_join(iThreadOrquestador, NULL );
+	pthread_join(hOrquestadorConexiones, NULL );
 
 
 
@@ -96,7 +98,8 @@ int operaciones_consola() {
 	else if (strcmp(comando[0], "cpu") == 0)
 	{
 		printf("Ejecutando comando cpu\n");
-		  // do something else
+		RecorrerCpu();
+		// do something else
 	}
 	else if (strcmp(comando[0], "0") == 0)
 		{
@@ -112,6 +115,20 @@ int operaciones_consola() {
 
 
 	return -1;
+}
+
+void RecorrerCpu(){
+	t_cpu * la_cpu;
+
+	int i=0;
+	while(i<list_size(lista_cpu)){
+		la_cpu = list_get(lista_cpu, i);
+		printf("Id Cpu:"COLOR_VERDE "%d\n"DEFAULT,la_cpu->id);
+		printf("La IP:"  COLOR_VERDE"%s\n"DEFAULT,la_cpu->ip);
+		printf("El Puerto:"COLOR_VERDE"%s\n"DEFAULT,la_cpu->puerto);
+		printf("Estado:"COLOR_VERDE "%d\n"DEFAULT,la_cpu->estado);
+		i++;
+	}
 }
 
 int ChartToInt(char x) {
@@ -164,6 +181,38 @@ int ObtenerComandoMSJ(char* buffer) {
 	return PosicionDeBufferAInt(buffer, 0);
 }
 
+int AtiendeCpu(char* buffer){
+
+	char *la_Ip,*el_Puerto;
+	int digitosCantNumIp=0,tamanioDeIp;
+	int posActual=0;
+	t_cpu * la_cpu;
+
+	//BUFFER RECIBIDO = 1119127.0.0.1246000
+	//1: es cpu 1: es primer conexion 19127.0.0.1: la ip 246000: el puerto
+	//Ese 3 que tenemos abajo es la posicion para empezar a leer el buffer 411
+
+	digitosCantNumIp=PosicionDeBufferAInt(buffer,2);
+	//printf("Cantidad de digitos de Tamanio de Ip:%d\n",digitosCantNumIp);
+	tamanioDeIp=ObtenerTamanio(buffer,3,digitosCantNumIp);
+	//printf("Tamaño de IP:%d\n",tamanioDeIp);
+	if(tamanioDeIp>=10){
+		posActual=digitosCantNumIp;
+	} else {
+		posActual=1+digitosCantNumIp;
+	}
+	la_Ip=DigitosNombreArchivo(buffer,&posActual);
+	//printf("Ip:%s\n",la_Ip);
+	el_Puerto=DigitosNombreArchivo(buffer,&posActual);
+	//printf("Puerto:%s\n",el_Puerto);
+		int id = list_size(lista_cpu)+1;
+		la_cpu = cpu_create(id,la_Ip,el_Puerto,0);
+		list_add(lista_cpu,la_cpu);
+
+
+	return 1;
+}
+
 int AtiendeCliente(void * arg) {
 	int socket = (int) arg;
 	//int id=-1;
@@ -171,7 +220,7 @@ int AtiendeCliente(void * arg) {
 	int longitudBuffer;
 
 // Es el encabezado del mensaje. Nos dice quien envia el mensaje
-	int emisor = 0;
+	int mensajeEmisor = 0;
 
 // Dentro del buffer se guarda el mensaje recibido por el cliente.
 	char* buffer;
@@ -199,10 +248,17 @@ int AtiendeCliente(void * arg) {
 
 		if (bytesRecibidos > 0) {
 			//Analisamos que peticion nos está haciendo (obtenemos el comando)
-			emisor = ObtenerComandoMSJ(buffer);
+			mensajeEmisor = ObtenerComandoMSJ(buffer+1);
 			//Evaluamos los comandos
-						switch (emisor) {
-						case 1:
+						switch (mensajeEmisor) {
+						case 1:                                 //1 es conexion CPU
+							if(AtiendeCpu(buffer)){
+								mensaje = "Ok";
+							}
+							else {
+								mensaje = "No";
+							}
+
 							mensaje="Ok";
 							break;
 						default:
@@ -424,11 +480,11 @@ int conectarCpu(int * socket_Cpu, char* ipCpu, char* puertoCpu) {
 
 	if ((*socket_Cpu = socket(serverInfo->ai_family, serverInfo->ai_socktype,
 			serverInfo->ai_protocol)) < 0) {
-		log_info(logger, "ERROR: crear socket_Marta");
+		log_info(logger, "ERROR: crear socket_Cpu");
 	}
 	if (connect(*socket_Cpu, serverInfo->ai_addr, serverInfo->ai_addrlen)
 			< 0) {
-		log_info(logger, "ERROR: conectar socket_Nodo");
+		log_info(logger, "ERROR: conectar socket_Cpu");
 	} else {
 		conexionOk = 1;
 	}
@@ -536,4 +592,24 @@ char* obtenerSubBuffer(char *nombre){
 	string_append(&aux,nombre);
 
 	return aux;
+}
+
+char* DigitosNombreArchivo(char *buffer,int *posicion){
+
+	char *nombreArch;
+	int digito=0,i=0,j=0,algo=0,aux=0,x=0;
+
+	digito=PosicionDeBufferAInt(buffer,*posicion);
+	for(i=1;i<=digito;i++){
+		algo=PosicionDeBufferAInt(buffer,*posicion+i);
+		aux=aux*10+algo;
+	}
+	nombreArch = malloc(aux+1);
+	for(j=*posicion+i;j<*posicion+i+aux;j++){
+		nombreArch[x]=buffer[j];
+		x++;
+	}
+	nombreArch[x]='\0';
+	*posicion=*posicion+i+aux;
+	return nombreArch;
 }

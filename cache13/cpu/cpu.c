@@ -7,14 +7,43 @@ int main(int argv, char** argc) {
 
 	// Levantamos el archivo de configuracion.
 	LevantarConfig();
-
+	pthread_t hCpu[g_Cant_Hilos]; 			//Hilo de conexion
+	int i = 1;
 	//Conectamos con Planificador y con Memoria:
-	conectarsePlanificador();
-	conectarseMemoria();
+	while(i<=g_Cant_Hilos){
+
+	int iThreadCpu = pthread_create(&hCpu[i], NULL,
+			(void*) iniciarCpu,(void*) g_Puerto_CPU );
+
+		if (iThreadCpu) {
+			fprintf(stderr,
+				"Error al crear hilo - pthread_create() return code: %d\n",
+				iThreadCpu);
+			exit(EXIT_FAILURE);
+		}
+		i++;
+		g_Puerto_CPU++;
+		}
+
+	for(i=0;i<g_Cant_Hilos;i++){
+		pthread_join(hCpu[i],NULL);
+	}
+
+	return EXIT_SUCCESS;
+}
+
+void iniciarCpu(void* arg){
+	int puertoCpu;
+	puertoCpu=(int)arg;
+	printf("Hola entre, puerto: %d\n", puertoCpu);
+	conectarsePlanificador(puertoCpu);
+	conectarseMemoria(puertoCpu);
+	HiloOrquestadorDeConexiones(puertoCpu);
 
 	//Hilo orquestador conexiones
-	int iThreadOrquestador = pthread_create(&hOrquestadorConexiones, NULL,
-		(void*) HiloOrquestadorDeConexiones, NULL );
+
+	/*int iThreadOrquestador = pthread_create(&hOrquestadorConexiones, NULL,
+		(void*) HiloOrquestadorDeConexiones, puertoCpu );
 
 	if (iThreadOrquestador) {
 		fprintf(stderr,
@@ -24,34 +53,40 @@ int main(int argv, char** argc) {
 	}
 
 	pthread_join(hOrquestadorConexiones, NULL );
+	 */
 
-	return EXIT_SUCCESS;
 }
-
-void conectarsePlanificador(){
+void conectarsePlanificador(int puertoCpu){
 	int socket_Plani;
 	int bytesRecibidos,cantRafaga=1,tamanio;
 	char*buffer = string_new();
 	char*bufferR = string_new();
 	char*bufferE = string_new();
+	char*aux;
 
 	if( conectarPlanificador(&socket_Plani)){
 		printf("Conexion ok Planificador\n");
+
+		//ENVIO a PLANIFICADOR
+		//11210127.0.0.1143000 primer conexion, manda ip y puerto.
 		string_append(&buffer,"11");
-		if(1){
-			EnviarDatos(socket_Plani,buffer, strlen(buffer));
-			bufferR = RecibirDatos(socket_Plani,bufferR, &bytesRecibidos,&cantRafaga,&tamanio);
-		} else {
-			printf("No se pudo conectar al Planificador\n");
-		}
+		aux=obtenerSubBuffer("127.0.0.1");
+		string_append(&buffer,aux);
+		aux=obtenerSubBuffer(string_itoa(puertoCpu));
+		string_append(&buffer,aux);
+
+		EnviarDatos(socket_Plani,buffer, strlen(buffer));
+		bufferR = RecibirDatos(socket_Plani,bufferR, &bytesRecibidos,&cantRafaga,&tamanio);
+
 		free(buffer);
 		free(bufferR);
 		free(bufferE);
-	}
-
+		} else {
+			printf("No se pudo conectar al Planificador\n");
+		}
 }
 
-void conectarseMemoria(){
+void conectarseMemoria(int puertoCpu){
 	int socket_Memoria;
 	int bytesRecibidos,cantRafaga=1,tamanio;
 	char*buffer = string_new();
@@ -62,8 +97,8 @@ void conectarseMemoria(){
 		printf("Conexion ok Memoria\n");
 		string_append(&buffer,"11");
 		if(1){
-			EnviarDatos(socket_Memoria,buffer, strlen(buffer));
-			bufferR = RecibirDatos(socket_Memoria,bufferR, &bytesRecibidos,&cantRafaga,&tamanio);
+			//EnviarDatos(socket_Memoria,buffer, strlen(buffer));
+			//bufferR = RecibirDatos(socket_Memoria,bufferR, &bytesRecibidos,&cantRafaga,&tamanio);
 		} else {
 			printf("No se pudo conectar al Planificador\n");
 		}
@@ -364,7 +399,7 @@ void ErrorFatal(const char* mensaje, ...) {
 	exit(EXIT_FAILURE);
 }
 
-void HiloOrquestadorDeConexiones() {
+void HiloOrquestadorDeConexiones(int puertoCpu) {
 
 	int socket_host;
 	struct sockaddr_in client_addr;
@@ -383,7 +418,7 @@ void HiloOrquestadorDeConexiones() {
 	}
 
 	my_addr.sin_family = AF_INET;
-	my_addr.sin_port = htons(g_Puerto_CPU);
+	my_addr.sin_port = htons(puertoCpu);
 	my_addr.sin_addr.s_addr = htons(INADDR_ANY );
 	memset(&(my_addr.sin_zero), '\0', 8 * sizeof(char));
 

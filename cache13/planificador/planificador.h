@@ -32,6 +32,7 @@
 
 /*********************/
 t_log* logger;								// Logger del commons
+t_list *lista_cpu;							//Lista de Cpu
 FILE* g_ArchivoConsola;						// Archivo donde descargar info impresa por consola
 char* g_MensajeError;						//Mensaje de error global.
 pthread_t hConsola, hOrquestadorConexiones;	// Definimos los hilos principales
@@ -49,16 +50,40 @@ typedef enum {
 	NosePuedeCrearHilo,
 	OtroError,
 } t_error;							//Tipo error
+
+typedef struct {
+	int id;
+	char * ip;
+	char * puerto;
+	int estado;
+} t_cpu;
+
+t_cpu *cpu_create(int id, char *ipCpu, char* puertoCpu, int activo) {
+	t_cpu *new = malloc(sizeof(t_cpu));
+	new->id = id;
+	new->ip = strdup(ipCpu);
+	new->puerto = strdup(puertoCpu);
+	new->estado = activo;
+	return new;
+}
+
+void cpu_destroy(t_cpu* self) {
+	free(self);
+}
+
 void Comenzar_Consola();
 void HiloOrquestadorDeConexiones();
 int operaciones_consola();
+void RecorrerCpu();
 void LevantarConfig();
 void Error(const char* mensaje, ...);
 char* RecibirDatos(int socket, char *buffer, int *bytesRecibidos,int *cantRafaga,int *tamanio);
 int AtiendeCliente(void * arg);
+int AtiendeCpu(char* buffer);
 void HiloOrquestadorDeConexiones();
 int EnviarDatos(int socket, char *buffer, int cantidadDeBytesAEnviar);
 void CerrarSocket(int socket);
 int iniciarPrograma(char* nombreProg,char* ip,char*puerto,char**buffer);
 int conectarCpu(int * socket_Cpu, char* ipCpu, char* puertoCpu);
 char* obtenerSubBuffer(char *nombre);
+char* DigitosNombreArchivo(char *buffer,int *posicion);
