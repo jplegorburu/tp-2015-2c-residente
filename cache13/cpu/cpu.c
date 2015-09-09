@@ -96,15 +96,14 @@ void conectarseMemoria(int puertoCpu){
 	if(conectarMemoria(&socket_Memoria)){
 		printf("Conexion ok Memoria\n");
 		string_append(&buffer,"11");
-		if(1){
 			//EnviarDatos(socket_Memoria,buffer, strlen(buffer));
 			//bufferR = RecibirDatos(socket_Memoria,bufferR, &bytesRecibidos,&cantRafaga,&tamanio);
-		} else {
-			printf("No se pudo conectar al Planificador\n");
-		}
+
 		free(buffer);
 		free(bufferR);
 		free(bufferE);
+	}else {
+		printf("No se pudo conectar a la memoria\n");
 	}
 }
 

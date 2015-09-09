@@ -92,7 +92,7 @@ int main(int argv, char** argc) {
 																int funcion;
 																//Evaluamos los comandos
 																			switch (emisor) {
-																			case 1:
+																			case 3: //3 es memoria
 
 																			funcion = ObtenerComandoMSJ(buffer+1);
 																		    if(funcion==2){

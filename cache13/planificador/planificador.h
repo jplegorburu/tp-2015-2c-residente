@@ -32,7 +32,8 @@
 
 /*********************/
 t_log* logger;								// Logger del commons
-t_list *lista_cpu;							//Lista de Cpu
+t_list *lista_cpu;							//Lista de Cpu conectadas.
+t_list *lista_entradaSalida;      			//Cola de procesos en entrada y salida.
 FILE* g_ArchivoConsola;						// Archivo donde descargar info impresa por consola
 char* g_MensajeError;						//Mensaje de error global.
 pthread_t hConsola, hOrquestadorConexiones;	// Definimos los hilos principales
@@ -50,6 +51,27 @@ typedef enum {
 	NosePuedeCrearHilo,
 	OtroError,
 } t_error;							//Tipo error
+
+typedef struct {
+	int pid;
+	char * ruta;
+	int proxInst;
+	int estado; //0 ready, 1 running, 2 bloqueado
+	//FALTARIA INFO PARA CALCULAR METRICAS tiempo de espera, ejecucion, etc.
+} t_pcb;
+
+t_pcb *pcb_create(int pid, char *ruta, int proxInst, int activo) {
+	t_pcb *new = malloc(sizeof(t_pcb));
+	new->pid = pid;
+	new->ruta = strdup(ruta);
+	new->proxInst= proxInst;
+	new->estado = activo;
+	return new;
+}
+
+void pcb_destroy(t_pcb* self) {
+	free(self);
+}
 
 typedef struct {
 	int id;
@@ -87,3 +109,4 @@ int iniciarPrograma(char* nombreProg,char* ip,char*puerto,char**buffer);
 int conectarCpu(int * socket_Cpu, char* ipCpu, char* puertoCpu);
 char* obtenerSubBuffer(char *nombre);
 char* DigitosNombreArchivo(char *buffer,int *posicion);
+t_cpu* buscarCpuLibre();

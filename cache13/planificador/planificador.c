@@ -71,17 +71,15 @@ int operaciones_consola() {
 			return 1;
 		}
 		printf("Comando ingresado: %s \n",comando[0]);
-		printf("PATH ingresado: %s \n",comando[1]);
 	if (strcmp(comando[0], "correr") == 0)
 	{
 		char* PATH = comando[1];
 		printf("Ejecutando comando correr mCod:%s\n",PATH);
-
-		char* ip="127.0.0.1";
-		char* puerto="4500"; //Harcodeado falta armar estructura de CPU que se conectan
+		t_cpu* la_cpu = buscarCpuLibre();
+		//crearPcbProceso(PATH);
+		//PLANIFICAR buscarCpuLibre y algoritmo de ejecucion.
 		char * buffer;
-		iniciarPrograma(PATH,ip,puerto,&buffer);
-
+		iniciarPrograma(PATH,la_cpu->ip,la_cpu->puerto,&buffer); //Falta enviar contexto de ejecucion Path prox instruccion.
 		// do something
 	}
 	else if (strcmp(comando[0], "finalizar") == 0)
@@ -402,6 +400,15 @@ void CerrarSocket(int socket) {
 	close(socket);
 	//Traza("SOCKET SE CIERRA: (%d).", socket);
 	//log_trace(logger, "SOCKET SE CIERRA: (%d).", socket);
+}
+
+t_cpu* buscarCpuLibre(){
+	t_cpu* la_cpu = malloc(sizeof(t_cpu));
+		bool _true(void *elem){
+			return (((t_cpu*) elem)->estado==0);
+		}
+		la_cpu = list_find(lista_cpu, _true);
+	return la_cpu;
 }
 
 int iniciarPrograma(char* nombreProg,char* ip,char*puerto,char**buffer){

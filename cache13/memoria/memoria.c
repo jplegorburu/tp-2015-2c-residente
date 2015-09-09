@@ -292,7 +292,7 @@ int AtiendeCliente(void * arg) {
 						printf("arrancando a correr programa\n");
 						int socket_swap;
 						conectarConSwap(&socket_swap);
-						EnviarDatos(socket_swap, "12",2);
+						EnviarDatos(socket_swap, "32",2);
 						mensaje="Ok";
 					    }
 					    break;
