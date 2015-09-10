@@ -10,10 +10,17 @@ int main(int argv, char** argc) {
 	// Levantamos el archivo de configuracion.
 	LevantarConfig();
 
+	crearArchivoParticionSwap();
+
 	escucharConexiones();
 
 	return EXIT_SUCCESS;
 
+}
+
+void crearArchivoParticionSwap(){
+	//Crea un archivo lleno de \0 para la particion Swap tomando los valores del archivo de configuracion
+	system(string_from_format("dd if=/dev/zero of=%s bs=%i count=%i", g_Arch_Swap, g_Tam_Pags,g_Cant_Pags));
 }
 
 	void escucharConexiones(){
