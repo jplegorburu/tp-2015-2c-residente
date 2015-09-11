@@ -5,7 +5,10 @@ int main(int argv, char** argc) {
 	int iThreadConsola, iThreadOrquestador;					//Hilo de consola
 
 	lista_cpu    = list_create();		//Lista de cpus
-
+	lista_procesos = list_create();		//Lista de procesos.
+	cola_listos = list_create();		//Cola de procesos en estado listo.
+	cola_bloqueados = list_create();		//Cola de procesos bloquedados.
+	lista_ejecucion = list_create();  		//Lista de procesos en ejecucion
 	//Archivo de Log
 	logger = log_create(NOMBRE_ARCHIVO_LOG, "planificador", true, LOG_LEVEL_TRACE);
 
@@ -45,7 +48,7 @@ void Comenzar_Consola() {
 		corte_consola = operaciones_consola();//menu de consola para elegir la opcion a realizar en filesystem
 	}
 	printf("Se termino la ejecucion de la consola del planificador\n");
-	//free(puntero_inicial);
+
 }
 
 int operaciones_consola() {
@@ -58,6 +61,9 @@ int operaciones_consola() {
 	fgets (ingresoConsola, MAXLINEA, stdin);
 	//system("clear");
 	int cont=0;
+		if(!strcmp(ingresoConsola,"\n")){
+			return 1;
+		}
 		//Le saco el \n final a la linea ingresada
 		char **sinBarraN = string_split(ingresoConsola,"\n");
 		//Separo el comando y su campo ingresado en caso que tenga.
@@ -66,7 +72,7 @@ int operaciones_consola() {
 		while(comando[cont]!=NULL){
 			  cont++;
 		}
-		if(cont == 3){
+		if(cont >= 3){
 			printf("Comando invalido.\n");
 			return 1;
 		}
@@ -75,12 +81,18 @@ int operaciones_consola() {
 	{
 		char* PATH = comando[1];
 		printf("Ejecutando comando correr mCod:%s\n",PATH);
-		t_cpu* la_cpu = buscarCpuLibre();
-		//crearPcbProceso(PATH);
-		//PLANIFICAR buscarCpuLibre y algoritmo de ejecucion.
-		char * buffer;
-		iniciarPrograma(PATH,la_cpu->ip,la_cpu->puerto,&buffer); //Falta enviar contexto de ejecucion Path prox instruccion.
-		// do something
+
+		//Creo la pcb del proceso a iniciar
+		t_pcb* la_pcb=crearPcbProceso(PATH);
+		if(la_pcb==NULL){
+			printf("Error al crear la PCB del proceso.\n");
+			return -1;
+		}else{
+			list_add(lista_procesos,la_pcb); //Agrego el proceso a la lista de procesos en el sistema
+		}
+
+		return correrPrograma(la_pcb);
+
 	}
 	else if (strcmp(comando[0], "finalizar") == 0)
 	{
@@ -91,6 +103,7 @@ int operaciones_consola() {
 	else if (strcmp(comando[0], "ps") == 0)
 	{
 		printf("Ejecutando comando ps\n");
+		RecorrerProcesos();
 		  // do something else
 	}
 	else if (strcmp(comando[0], "cpu") == 0)
@@ -110,9 +123,101 @@ int operaciones_consola() {
  	return 1;
 	}
 
-
-
 	return -1;
+}
+
+int correrPrograma(t_pcb* la_pcb){
+
+	//Busco si hay alguna CPU libre
+	t_cpu* la_cpu = buscarCpuLibre();
+	if(la_cpu==NULL){
+		//Si las CPU estan todas ocupadas agrego el proceso a la cola de listos.
+		printf("No hay CPU disponibles.\n");
+		agregarAColaListos(la_pcb->pid);
+		return 1;
+	}else{
+		//Si encuentra una CPU libre inicia el proceso.
+		char * buffer;
+		iniciarPrograma(la_pcb,la_cpu->ip,la_cpu->puerto,&buffer); //Falta enviar contexto de ejecucion Path prox instruccion.
+		la_pcb->estado =1;
+		agregarAListaEjecucion(la_pcb->pid);
+		return 1;
+	}
+	//PLANIFICAR buscarCpuLibre y algoritmo de ejecucion.
+
+}
+
+void agregarAListaEjecucion(int pid){
+	//Tomo el tiempo en que lo agrego a la cola de listos
+	time_t tiempo;
+	time(&tiempo);
+	list_add(lista_ejecucion,cola_create(pid,tiempo));
+}
+
+void eliminarDeListaEjecucion(int pid){
+			bool _true(void *elem){
+				return (((t_cola*) elem)->pid==pid);
+			}
+			t_cola* cola_eliminar = list_remove_by_condition(lista_ejecucion, _true);
+	//Tomo el tiempo en el que lo saco de la cola de listos.
+	time_t tiempo;
+	time(&tiempo);
+	double tejecucion = difftime(tiempo,cola_eliminar->tiempoIngreso);
+	t_pcb* la_pcb = buscarPCBporPid(pid);
+	la_pcb->tejecucion=la_pcb->tejecucion+tejecucion;
+	cola_destroy(cola_eliminar);
+}
+
+void agregarAColaListos(int pid){
+	//Tomo el tiempo en que lo agrego a la cola de listos
+	time_t tiempo;
+	time(&tiempo);
+	list_add(cola_listos,cola_create(pid,tiempo));
+}
+
+void eliminarDeColaListos(int pid){
+			bool _true(void *elem){
+				return (((t_cola*) elem)->pid==pid);
+			}
+			t_cola* cola_eliminar = list_remove_by_condition(cola_listos, _true);
+	//Tomo el tiempo en el que lo saco de la cola de listos.
+	time_t tiempo;
+	time(&tiempo);
+	double tespera = difftime(tiempo,cola_eliminar->tiempoIngreso);
+	t_pcb* la_pcb = buscarPCBporPid(pid);
+	la_pcb->tespera=la_pcb->tespera+tespera;
+	cola_destroy(cola_eliminar);
+}
+
+t_pcb* buscarPCBporPid(int pid){
+	bool _true(void *elem){
+		return (((t_pcb*) elem)->pid==pid);
+	}
+	return list_find(lista_procesos, _true);
+}
+
+t_pcb* crearPcbProceso(char* archivo){
+	pidProcesos++;
+	char* ruta = obtenerRutaArchivo(archivo);
+	if(!(ruta==NULL)){
+		t_pcb* la_pcb= la_pcb=pcb_create(pidProcesos,ruta,1,0); //1 prox instriccion, 0 estado ready
+		return la_pcb;
+	}
+	else{
+		return NULL;
+	}
+}
+
+char* obtenerRutaArchivo(char* archivo){
+	char* buf=malloc(PATH_MAX);
+	    char *res = realpath(archivo, buf);
+	    if (res) {
+	        printf("This source is at %s.\n", buf);
+	    } else {
+	        perror("realpath");
+	        return NULL;
+	    }
+	    return buf;
 }
 
 void RecorrerCpu(){
@@ -126,6 +231,28 @@ void RecorrerCpu(){
 		printf("El Puerto:"COLOR_VERDE"%s\n"DEFAULT,la_cpu->puerto);
 		printf("Estado:"COLOR_VERDE "%d\n"DEFAULT,la_cpu->estado);
 		i++;
+	}
+}
+
+void RecorrerProcesos(){
+	t_pcb * la_pcb;
+
+	int i=0;
+	while(i<list_size(lista_procesos)){
+		la_pcb = list_get(lista_procesos, i);
+		printf(COLOR_VERDE"mProc %d: %s -> %s\n"DEFAULT,la_pcb->pid,la_pcb->ruta,obtenerEstado(la_pcb->estado));
+		i++;
+	}
+}
+
+char* obtenerEstado(int estado){
+	if(estado==0){
+		return "Listo";
+	}
+	else if(estado ==1){
+		return "Ejecutando";
+	} else{
+		return "Bloqueado";
 	}
 }
 
@@ -256,8 +383,6 @@ int AtiendeCliente(void * arg) {
 							else {
 								mensaje = "No";
 							}
-
-							mensaje="Ok";
 							break;
 						default:
 							break;
@@ -365,8 +490,8 @@ char* RecibirDatos(int socket, char *buffer, int *bytesRecibidos,int *cantRafaga
 		}
 	}
 
-	log_trace(logger, "RECIBO DATOS. socket: %d. buffer: %s tamanio:%d", socket,
-	(char*) bufferAux, strlen(bufferAux));
+	//log_trace(logger, "RECIBO DATOS. socket: %d. buffer: %s tamanio:%d", socket,
+	//(char*) bufferAux, strlen(bufferAux));
 	return bufferAux; //--> buffer apunta al lugar de memoria que tiene el mensaje completo completo.
 }
 
@@ -388,9 +513,9 @@ int EnviarDatos(int socket, char *buffer, int cantidadDeBytesAEnviar) {
 
 	//memcpy(bufferLogueo,buffer,cantidadDeBytesAEnviar);
 	if(strlen(buffer)<50){
-		//log_info(logger, "ENVIO DATOS. socket: %d. Buffer:%s ",socket,(char*) buffer);
+		log_info(logger, "ENVIO DATOS. socket: %d. Buffer:%s ",socket,(char*) buffer);
 	} else {
-		//log_info(logger, "ENVIO DATOS. socket: %d. Tamanio:%d ",socket,strlen(buffer));
+		log_info(logger, "ENVIO DATOS. socket: %d. Tamanio:%d Buffer:%s",socket,strlen(buffer),buffer);
 	}
 
 	return bytecount;
@@ -408,10 +533,13 @@ t_cpu* buscarCpuLibre(){
 			return (((t_cpu*) elem)->estado==0);
 		}
 		la_cpu = list_find(lista_cpu, _true);
+		if(la_cpu!=NULL){
+			la_cpu->estado=1;
+		}
 	return la_cpu;
 }
 
-int iniciarPrograma(char* nombreProg,char* ip,char*puerto,char**buffer){
+int iniciarPrograma(t_pcb* proceso,char* ip,char*puerto,char**buffer){
 	char* bufferE,*bufferR;
 	int socket,tamanioE,bytesRecibidos,cantRafaga=1,tamanio;
 	bufferE = string_new();
@@ -419,46 +547,15 @@ int iniciarPrograma(char* nombreProg,char* ip,char*puerto,char**buffer){
 	*buffer = string_new();
 	//SOLO UNA RAFAGA
 	string_append(&bufferE,"21");
-	string_append(&bufferE,obtenerSubBuffer(nombreProg));
+	string_append(&bufferE,obtenerSubBuffer(string_itoa(proceso->pid)));
+	string_append(&bufferE,obtenerSubBuffer(proceso->ruta));
+	string_append(&bufferE,obtenerSubBuffer(string_itoa(proceso->proxInst)));
 	if(conectarCpu(&socket, ip, puerto)) {
 		tamanioE = strlen(bufferE);
 		if(tamanioE==EnviarDatos(socket,bufferE,tamanioE)) {
 			bufferR = RecibirDatos(socket,bufferR, &bytesRecibidos,&cantRafaga,&tamanio);
-		//	printf("TAMANIO DE BUFFER:%d\n",tamanio);
+			printf("TAMANIO DE BUFFER:%d\n",tamanio);
 			if(bufferR!=NULL){
-				bufferE=string_new();
-				string_append(&bufferE,"1");
-				EnviarDatos(socket,bufferE,2);
-				cantRafaga = 2;
-				char *aux=malloc(tamanio+1);
-
-				char *bloque=malloc(tamanio+1);
-
-				memset(bloque,0,tamanio+1);
-
-				char *recibido=string_new();
-				memset(aux,0,tamanio+1);
-
-				ssize_t numBytesRecv = 0;
-
-				do{
-					numBytesRecv = numBytesRecv + recv(socket, aux, tamanio, 0);
-					if ( numBytesRecv < 0)
-						printf("ERROR\n");
-					string_append(&recibido,aux);
-					strcat(bloque,recibido);
-					free(recibido);
-					recibido=string_new();
-					//printf("------ %d -----\n",strlen(bloque));
-					memset(aux, 0, tamanio+1);
-
-				}while (numBytesRecv <tamanio);
-			//	printf("TAMANIO:%d NUMBYTESRECV:%d\n",tamanio,numBytesRecv);
-				*buffer=malloc(tamanio+1);
-				memset(*buffer,0,tamanio+1);
-				memcpy(*buffer,bloque,tamanio);
-				free(bloque);
-				//printf("BLOQUE:%d TAMANIO:%lu Recibido Ok\n",nroBloque,(long unsigned)strlen(*buffer));
 				return 1;
 			}
 		}

@@ -8,9 +8,9 @@ int main(int argv, char** argc) {
 	// Levantamos el archivo de configuracion.
 	LevantarConfig();
 	pthread_t hCpu[g_Cant_Hilos]; 			//Hilo de conexion
-	int i = 1;
+	int i = 0;
 	//Conectamos con Planificador y con Memoria:
-	while(i<=g_Cant_Hilos){
+	while(i<g_Cant_Hilos){
 
 	int iThreadCpu = pthread_create(&hCpu[i], NULL,
 			(void*) iniciarCpu,(void*) g_Puerto_CPU );
