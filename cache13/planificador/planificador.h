@@ -23,6 +23,8 @@
 #include <arpa/inet.h>
 
 #define COLOR_VERDE   			"\x1b[32m"
+#define COLOR_AMARILLO			"\x1b[33m"
+#define COLOR_ROJO				"\x1b[31m"
 #define DEFAULT   				"\x1b[0m"
 #define PATH_CONFIG 			"config.cfg"		//Ruta del config
 #define NOMBRE_ARCHIVO_CONSOLA  "Consola_planificador.txt"	//Nombre de archivo de consola
@@ -30,6 +32,13 @@
 #define MAXLINEA				1000				//Maximo de linea de consola				//Cantidad maxima de directorios
 #define TAMANIO_IP				16					//un string ejempl 192.168.001.123
 #define BUFFERSIZE 				50					//Tamaño del buffer
+/**************Mensajes con CPU**************/
+#define CONEXION_CPU 			1					//Tamaño del buffer
+#define PROCESO_FIN				2					//Tamaño del buffer
+#define PROCESO_BLOQ			3					//Tamaño del buffer
+#define FIN_QUANTUM 			4					//Tamaño del buffer
+#define EJECUCION_CPU			5					//Tamaño del buffer
+
 
 /*********************/
 t_log* logger;								// Logger del commons
@@ -121,7 +130,7 @@ void cola_destroy(t_cola* self) {
 void Comenzar_Consola();
 void HiloOrquestadorDeConexiones();
 int operaciones_consola();
-void RecorrerCpu();
+void recorrerCpu();
 void LevantarConfig();
 void Error(const char* mensaje, ...);
 char* RecibirDatos(int socket, char *buffer, int *bytesRecibidos,int *cantRafaga,int *tamanio);
@@ -138,10 +147,12 @@ t_cpu* buscarCpuLibre();
 t_pcb* crearPcbProceso(char* archivo);
 char* obtenerRutaArchivo(char* archivo);
 char* obtenerEstado(int estado);
-void RecorrerProcesos();
+void recorrerProcesos();
 void agregarAColaListos(int pid);
 void eliminarDeColaListos(int pid);
 void agregarAListaEjecucion(int pid);
 
 int correrPrograma(t_pcb* la_pcb);
 t_pcb* buscarPCBporPid(int pid);
+int ultimaInstruccion(char* ruta);
+void finalizarProceso(int pid);
