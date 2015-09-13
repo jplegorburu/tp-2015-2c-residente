@@ -31,7 +31,7 @@
 #define NOMBRE_ARCHIVO_LOG 		"planificador.log"			//Nombre de archivo de log
 #define MAXLINEA				1000				//Maximo de linea de consola				//Cantidad maxima de directorios
 #define TAMANIO_IP				16					//un string ejempl 192.168.001.123
-#define BUFFERSIZE 				50					//Tamaño del buffer
+#define BUFFERSIZE 				200					//Tamaño del buffer
 /**************Mensajes con CPU**************/
 #define CONEXION_CPU 			1					//Tamaño del buffer
 #define PROCESO_FIN				2					//Tamaño del buffer
@@ -144,15 +144,25 @@ int conectarCpu(int * socket_Cpu, char* ipCpu, char* puertoCpu);
 char* obtenerSubBuffer(char *nombre);
 char* DigitosNombreArchivo(char *buffer,int *posicion);
 t_cpu* buscarCpuLibre();
+void liberarCpu(char* puerto);
 t_pcb* crearPcbProceso(char* archivo);
 char* obtenerRutaArchivo(char* archivo);
 char* obtenerEstado(int estado);
 void recorrerProcesos();
 void agregarAColaListos(int pid);
 void eliminarDeColaListos(int pid);
+void agregarAColaBloqueados(int pid);
+void eliminarDeColaBloqueados(int pid);
 void agregarAListaEjecucion(int pid);
-
+void eliminarDeListaEjecucion(int pid);
+void eliminarPcb(int pid);
+void eliminarProceso(int pid);
 int correrPrograma(t_pcb* la_pcb);
 t_pcb* buscarPCBporPid(int pid);
 int ultimaInstruccion(char* ruta);
 void finalizarProceso(int pid);
+void procesarInstrucciones(char* resultado, int pid,int cantInstrucciones);
+int finDeProceso(char* buffer);
+int finDeQuantum(char* buffer);
+int procesoBloqueado(char* buffer);
+int CharAToInt(char* x);
