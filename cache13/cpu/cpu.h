@@ -40,7 +40,7 @@ int g_Retardo;
 int g_Ejecutando = 1;						// - Bandera que controla la ejecución o no del programa. Si está en 0 el programa se cierra.
 int g_Puerto_CPU = 4500;
 //pthread_t hOrquestadorConexiones; 			//Hilo de conexion
-#define BUFFERSIZE 50
+#define BUFFERSIZE 200
 // TIPOS //
 typedef enum {
 	CantidadArgumentosIncorrecta,
@@ -69,5 +69,7 @@ int ObtenerComandoMSJ(char* buffer);
 void conectarseMemoria(int puertoCpu);
 void conectarsePlanificador(int puertoCpu);
 int conectarMemoria(int *socket_memoria);
-
+char* obtenerDireccion(char* buffer);
+char* obtenerPID(char* buffer);
+char* obtenerProximaInstruccion(char* buffer);
 

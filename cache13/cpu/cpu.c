@@ -488,6 +488,9 @@ int AtiendeCliente(void * arg) {
 		buffer = RecibirDatos(socket, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
 
 		int funcion;
+		//char* linea;
+		//linea = malloc(100);
+		//linea ="212101234567989277/home/utnso/workspace/tp-2015-2c-residente/cache13/planificador/programa.mcod1233";
 		if (bytesRecibidos > 0) {
 			//Analisamos que peticion nos está haciendo (obtenemos el comando)
 			emisor = ObtenerComandoMSJ(buffer);
@@ -497,10 +500,21 @@ int AtiendeCliente(void * arg) {
 
 							funcion = ObtenerComandoMSJ(buffer+1);
 							if(funcion==1){
-								printf("arrancando a correr programa\n");
+								printf("Funcion de Ejecucion\n");
+								printf("Buffer : %s\n",buffer);
+								printf("PID %s\n",obtenerPID(buffer));
+								printf("Direccion: %s\n",obtenerDireccion(buffer));
+								printf("Instruccion: %s\n",obtenerProximaInstruccion(buffer));
+								//printf("arrancando a correr programa\n");
+
+
 								int socket_memoria;
 								conectarMemoria(&socket_memoria);
 								EnviarDatos(socket_memoria, "12",2);
+							}
+							if(funcion==2){
+								//Solicitud de estado de CPU
+								printf("Solicitud de estado de CPU\n");
 							}
 							mensaje="Ok";
 							break;
@@ -519,6 +533,69 @@ int AtiendeCliente(void * arg) {
 	CerrarSocket(socket);
 
 	return code;
+}
+
+char* obtenerProximaInstruccion(char* buffer){
+
+	int cantDigPID, cantDigDIR, cantDIR,posicion,cantPID,cantDigProxInt,cantProxInt;
+	int j=0,i=0,x=0;
+	char *direccion;
+
+	cantDigPID = ObtenerComandoMSJ(buffer + 2);
+	cantPID = ObtenerTamanio(buffer,3,cantDigPID);
+	cantDigDIR = ObtenerComandoMSJ(buffer + 2 + cantDigPID + cantPID + 1);
+	cantDIR = ObtenerTamanio(buffer,3 + cantDigPID + cantPID + 1,cantDigDIR);
+	cantDigProxInt = ObtenerComandoMSJ(buffer + 2 + cantDigPID + cantPID + cantDigDIR + cantDIR + 2);
+	cantProxInt = ObtenerTamanio(buffer,3 + cantDigPID + cantPID + cantDIR + cantDigDIR + 2,cantDigProxInt);
+	posicion= 2 + cantDigPID + 1 + cantPID + cantDIR + cantDigDIR + 1 + cantDigProxInt + 1 ;
+	direccion = malloc(cantProxInt + 1);
+		for (j = posicion + i; j < posicion + i + cantProxInt; j++) {
+			direccion[x] = buffer[j];
+			x++;
+		}
+	direccion[x] = '\0';
+	return direccion;
+}
+
+char* obtenerDireccion(char* buffer){
+
+	int cantDigPID, cantDigDIR, cantDIR,posicion,cantPID;
+	int j=0,i=0,x=0;
+	char *direccion;
+
+	cantDigPID = ObtenerComandoMSJ(buffer + 2);
+	cantPID = ObtenerTamanio(buffer,3,cantDigPID);
+	cantDigDIR = ObtenerComandoMSJ(buffer + 2 + cantDigPID + cantPID + 1);
+	cantDIR = ObtenerTamanio(buffer,2 + cantDigPID + cantPID + 2,cantDigDIR);
+	posicion= 2 + cantDigPID + 1 + cantPID + cantDigDIR + 1;
+	direccion = malloc(cantDIR + 1);
+		for (j = posicion + i; j < posicion + i + cantDIR; j++) {
+			direccion[x] = buffer[j];
+			x++;
+		}
+	direccion[x] = '\0';
+	return direccion;
+}
+
+char* obtenerPID(char* buffer){
+
+	int cantDigPID,posicion,cantPID;
+	int j=0,i=0,x=0;
+	char *PIDChar;
+
+	cantDigPID = ObtenerComandoMSJ(buffer + 2);
+	cantPID = ObtenerTamanio(buffer,3,cantDigPID);
+	posicion= 2+cantDigPID+1;
+
+	PIDChar = malloc(cantPID+1);
+
+		for (j = posicion + i; j < posicion + i + cantPID; j++) {
+			PIDChar[x] = buffer[j];
+			x++;
+		}
+		PIDChar[x] = '\0';
+
+	return PIDChar;
 }
 
 void CerrarSocket(int socket) {
