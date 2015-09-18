@@ -4,17 +4,15 @@ int main(int argv, char** argc) {
 
 	int iThreadOrquestador;
 
-	int socket_swap;
+
 	//Archivo de Log
 	logger = log_create(NOMBRE_ARCHIVO_LOG, "memoria", true, LOG_LEVEL_TRACE);
-
-
 
 	// Levantamos el archivo de configuracion.
 	LevantarConfig();
 
-	if( conectarConSwap(&socket_swap))
-			{printf("Conexion con Swap exitosa.\n");}
+	ConectarseConSwap(g_Puerto_Memoria);
+
 
 	HiloOrquestadorDeConexiones();
 	//Hilo orquestador conexiones para escuchar
@@ -311,6 +309,32 @@ int AtiendeCliente(void * arg) {
 	CerrarSocket(socket);
 
 	return code;
+}
+
+void ConectarseConSwap(int g_Puerto_Memoria){
+	int socket_swap;
+//	int bytesRecibidos,cantRafaga=1,tamanio;
+	char*buffer = string_new();
+//	char*bufferR = string_new();
+
+//	char*bufferE = string_new();
+
+	if(conectarConSwap(&socket_swap)){
+		printf("Conexion con Swap exitosa.\n");
+
+		string_append(&buffer,"31");
+
+	//	EnviarDatos(socket_swap,buffer, strlen(buffer));
+	//	bufferR = RecibirDatos(socket_Memoria,bufferR, &bytesRecibidos,&cantRafaga,&tamanio);
+
+		free(buffer);
+
+//		free(bufferR);
+//		free(bufferE);
+	}
+	else {
+		printf("No se pudo conectar al swap\n");
+	}
 }
 
 char* RecibirDatos(int socket, char *buffer, int *bytesRecibidos,int *cantRafaga,int *tamanio) {

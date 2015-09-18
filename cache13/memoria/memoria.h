@@ -59,6 +59,7 @@ typedef enum {
 } t_error;							//Tipo error
 
 int conectarConSwap(int *socket_swap);
+void ConectarseConSwap(int g_puerto_memoria);
 void LevantarConfig();
 void Error(const char* mensaje, ...);
 char* RecibirDatos(int socket, char *buffer, int *bytesRecibidos,int *cantRafaga,int *tamanio);
