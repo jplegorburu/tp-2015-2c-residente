@@ -502,11 +502,20 @@ int AtiendeCliente(void * arg) {
 							if(funcion==1){
 								printf("Funcion de Ejecucion\n");
 								printf("Buffer : %s\n",buffer);
-								printf("PID %s\n",obtenerPID(buffer));
+								printf("PID %d\n",obtenerPID(buffer));
 								printf("Direccion: %s\n",obtenerDireccion(buffer));
 								printf("Instruccion: %s\n",obtenerProximaInstruccion(buffer));
-								//printf("arrancando a correr programa\n");
+								abrirArchivo(obtenerDireccion(buffer),obtenerPID(buffer));
 
+								//Recorro lista:
+								t_procesos *auxiliar;
+								printf("\n Motrando lista de procesos\n");
+								auxiliar=primero;
+								while(auxiliar!=NULL){
+									printf("Proceso: %d,Instruccion numero: %d\n",auxiliar->pid,auxiliar->idcod);
+									printf("Funcion: %d,paginas: %d, tiempo:%d\n",auxiliar->funcion,auxiliar->paginas,auxiliar->tiempo);
+									auxiliar=NULL;
+								}
 
 								int socket_memoria;
 								conectarMemoria(&socket_memoria);
@@ -533,6 +542,148 @@ int AtiendeCliente(void * arg) {
 	CerrarSocket(socket);
 
 	return code;
+}
+
+void abrirArchivo(char* direccion, int PID){
+
+
+FILE *archivo;
+char caracter;
+int paginas,tiempo,x=0,z=0;
+int lineas = 0;
+char *texto;
+archivo = fopen(direccion,"r");
+if (archivo == NULL){
+	printf("\nError de apertura del archivo. \n\n");
+}else{
+	t_procesos *proceso_nuevo;
+	proceso_nuevo = (t_procesos*) malloc(sizeof(t_procesos));
+	printf("\nEl contenido del archivo de prueba es \n\n");
+	while (feof(archivo) == 0){
+		//Leo Primer Caracter
+		caracter = fgetc(archivo);
+		paginas=0;
+		tiempo=0;
+		lineas = lineas+1;
+		proceso_nuevo->pid=PID;
+		proceso_nuevo->idcod=lineas;
+		proceso_nuevo->paginas=0;
+		proceso_nuevo->tiempo=0;
+		proceso_nuevo->estado=0;
+		proceso_nuevo->texto=NULL;
+
+		if(caracter == 'I' || caracter == 'i'){
+			proceso_nuevo->funcion=1;
+			while(caracter!=' '){
+					caracter = fgetc(archivo);
+				}
+			while(caracter != ';'){
+				//A partir de aca serian todos numericos
+				caracter = fgetc(archivo);
+				paginas= devolverValorNumericoArchivo(caracter,paginas);
+				}
+			proceso_nuevo->paginas=paginas;
+		}else
+
+		if(caracter == 'L' || caracter == 'l'){
+			proceso_nuevo->funcion=2;
+			while(caracter!=' '){
+					caracter = fgetc(archivo);
+				}
+			while(caracter != ';'){
+				//A partir de aca serian todos numericos
+				caracter = fgetc(archivo);
+				paginas= devolverValorNumericoArchivo(caracter,paginas);
+				}
+			proceso_nuevo->paginas=paginas;
+		}else
+
+		if(caracter == 'E' || caracter == 'e'){
+			caracter = fgetc(archivo);
+
+			if(caracter == 'S' || caracter == 's'){
+				proceso_nuevo->funcion=3;
+
+				while(caracter!=' '){
+				caracter = fgetc(archivo);
+					}
+				caracter = fgetc(archivo);//Tomo el proximo valor al espacio que seria un número
+				while(caracter != ' '){
+				paginas= devolverValorNumericoArchivo(caracter,paginas);
+				caracter = fgetc(archivo);
+				}
+				caracter = fgetc(archivo);//Tomo el proximo valor al espacio que una comilla
+				caracter = fgetc(archivo);//Tomo el proximo valor al espacio que seria la primer letra del texto a escribir.
+				texto = malloc(paginas*5);
+				x=0;
+				z=0;
+				while(caracter != '"'){
+				texto[x]=caracter;
+				printf("\n Texto %c",texto[x]);
+				x++;
+				caracter = fgetc(archivo);
+				}
+
+				caracter = fgetc(archivo);//Aca esta el caracter ';'
+
+				texto[x]='\0';
+				proceso_nuevo->texto = strdup(texto);//malloc(sizeof(char)*x+1);
+				while(x<=z){
+				proceso_nuevo->texto[z]=texto[z];
+				z++;
+				}
+				proceso_nuevo->paginas=paginas;
+				//printf("\n Texto proceso %s",proceso_nuevo->texto);
+			}
+			if(caracter == 'N' || caracter == 'n'){
+				proceso_nuevo->funcion=4;
+				while(caracter!=' '){
+						caracter = fgetc(archivo);
+					}
+				while(caracter != ';'){
+					//A partir de aca serian todos numericos
+					caracter = fgetc(archivo);
+					tiempo= devolverValorNumericoArchivo(caracter,tiempo);
+					}
+				proceso_nuevo->tiempo=tiempo;
+			}
+		}else
+		if(caracter == 'F' || caracter == 'f'){
+			proceso_nuevo->funcion=5;
+			while(caracter != ';'){
+			caracter = fgetc(archivo);
+			}
+		}
+
+		proceso_nuevo->proximo=NULL;
+
+		if(primero==NULL){
+			//Primer Elemento
+			primero=proceso_nuevo;
+			ultimo=proceso_nuevo;
+		} else{
+		//	ultimo->proximo = proceso_nuevo;
+			ultimo=proceso_nuevo;
+		}
+		fgetc(archivo);//Aca leo el \0
+	}//Termina el While
+}
+
+fclose(archivo);
+
+}
+
+int devolverValorNumericoArchivo(char caracter,int numero){
+	int digito;
+	if(caracter!=';'){
+		digito=ChartToInt(caracter);
+		if(numero==0){
+			numero=digito;
+		}else{
+			numero=numero*10+digito;
+		}
+	}
+return numero;
 }
 
 char* obtenerProximaInstruccion(char* buffer){
@@ -577,25 +728,19 @@ char* obtenerDireccion(char* buffer){
 	return direccion;
 }
 
-char* obtenerPID(char* buffer){
+int obtenerPID(char* buffer){
 
 	int cantDigPID,posicion,cantPID;
-	int j=0,i=0,x=0;
-	char *PIDChar;
-
+	int j=0,i=0;
+	int PID=0;
 	cantDigPID = ObtenerComandoMSJ(buffer + 2);
 	cantPID = ObtenerTamanio(buffer,3,cantDigPID);
 	posicion= 2+cantDigPID+1;
 
-	PIDChar = malloc(cantPID+1);
-
 		for (j = posicion + i; j < posicion + i + cantPID; j++) {
-			PIDChar[x] = buffer[j];
-			x++;
+			PID= devolverValorNumericoArchivo(buffer[j],PID);
 		}
-		PIDChar[x] = '\0';
-
-	return PIDChar;
+	return PID;
 }
 
 void CerrarSocket(int socket) {

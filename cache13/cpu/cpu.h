@@ -39,6 +39,7 @@ int g_Cant_Hilos;
 int g_Retardo;
 int g_Ejecutando = 1;						// - Bandera que controla la ejecución o no del programa. Si está en 0 el programa se cierra.
 int g_Puerto_CPU = 4500;
+int* cantProcesos;
 //pthread_t hOrquestadorConexiones; 			//Hilo de conexion
 #define BUFFERSIZE 200
 // TIPOS //
@@ -50,6 +51,33 @@ typedef enum {
 	NosePuedeCrearHilo,
 	OtroError,
 } t_error;							//Tipo error
+
+//Estructura para guardar informacion del archivo
+typedef struct{
+	int pid;
+	int funcion; //1 iniciar, 2 leer, 3 escribir, 4 I/O, 5 finalizar
+	int idcod;   //Posicion en el archivo
+	int paginas; //Solo para funcion 1,2,3
+	char* texto; //solo para 2 y 3
+	int tiempo;	 //en segundos
+	int estado;  //0 pendiente, 1 ejecutado, 2 finalizado, 3 fallo
+	struct t_procesos* proximo;
+}t_procesos;
+
+t_procesos *primero, *ultimo;
+int devolverValorNumericoArchivo(char caracter,int numero);
+
+//t_procesos *proceso_create(int pid, int funcion, int idcod,int paginas, char* texto, int tiempo, int estado){
+//	t_procesos *new = malloc(sizeof(t_procesos));
+//	new->pid = pid;
+//	new->funcion = funcion;
+//	new->idcod = idcod;
+//	new->paginas = paginas;
+//	new->texto = strdup(texto);
+//	new->tiempo= tiempo;
+//	new->estado = estado;
+//	return new;
+//}
 
 void LevantarConfig();
 void Error(const char* mensaje, ...);
@@ -70,6 +98,6 @@ void conectarseMemoria(int puertoCpu);
 void conectarsePlanificador(int puertoCpu);
 int conectarMemoria(int *socket_memoria);
 char* obtenerDireccion(char* buffer);
-char* obtenerPID(char* buffer);
+int obtenerPID(char* buffer);
 char* obtenerProximaInstruccion(char* buffer);
-
+void abrirArchivo(char* direccion, int PID);
