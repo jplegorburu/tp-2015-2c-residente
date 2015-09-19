@@ -88,7 +88,7 @@ void conectarsePlanificador(int puertoCpu){
 
 void conectarseMemoria(int puertoCpu){
 	int socket_Memoria;
-	int bytesRecibidos,cantRafaga=1,tamanio;
+	//int bytesRecibidos,cantRafaga=1,tamanio;
 	char*buffer = string_new();
 	char*bufferR = string_new();
 	char*bufferE = string_new();
@@ -255,7 +255,7 @@ int ChartToInt(char x) {
 int CharAToInt(char* x) {
 	int numero = 0;
 	char * aux = string_new();
-	string_append_with_format(&aux, "%c", x);
+	string_append_with_format(&aux, "%s", x);
 
 	numero = strtol(aux, (char **) NULL, 10);
 
@@ -505,17 +505,9 @@ int AtiendeCliente(void * arg) {
 								printf("PID %d\n",obtenerPID(buffer));
 								printf("Direccion: %s\n",obtenerDireccion(buffer));
 								printf("Instruccion: %s\n",obtenerProximaInstruccion(buffer));
-								abrirArchivo(obtenerDireccion(buffer),obtenerPID(buffer));
 
-								//Recorro lista:
-								t_procesos *auxiliar;
-								printf("\n Motrando lista de procesos\n");
-								auxiliar=primero;
-								while(auxiliar!=NULL){
-									printf("Proceso: %d,Instruccion numero: %d\n",auxiliar->pid,auxiliar->idcod);
-									printf("Funcion: %d,paginas: %d, tiempo:%d\n",auxiliar->funcion,auxiliar->paginas,auxiliar->tiempo);
-									auxiliar=NULL;
-								}
+								abrirArchivo(obtenerDireccion(buffer),CharAToInt(obtenerProximaInstruccion(buffer)),obtenerPID(buffer));
+
 
 								int socket_memoria;
 								conectarMemoria(&socket_memoria);
@@ -525,8 +517,33 @@ int AtiendeCliente(void * arg) {
 								//Solicitud de estado de CPU
 								printf("Solicitud de estado de CPU\n");
 							}
-							mensaje="Ok";
+							mensaje="ok";
 							break;
+						case 3:
+							funcion = ObtenerComandoMSJ(buffer+1);
+							switch(funcion){
+								case 6:
+									if(ObtenerComandoMSJ(buffer+2)==0)
+											printf("ERROR! No se puede escribir \n");
+										else
+											printf("Escritura realizada \n");
+									break;
+								case 7:
+									if(ObtenerComandoMSJ(buffer+2)==0)
+										printf("No se pudo iniciar el proceso\n");
+									else
+										printf("Proceso Iniciado \n");
+									break;
+								case 8:
+									if(ObtenerComandoMSJ(buffer+2)==0)
+										printf("ERROR no pudo leer\n");
+									else
+										printf("Lectura realizada\n"); //Grabar Texto
+									break;
+								default:
+									break;
+								}
+						break;
 						default:
 							break;
 						}
@@ -544,133 +561,104 @@ int AtiendeCliente(void * arg) {
 	return code;
 }
 
-void abrirArchivo(char* direccion, int PID){
+void abrirArchivo(char* direccion, int instruccionAEjecutar, int pid){
 
+FILE *archivoMcod;
+archivoMcod = fopen(direccion,"r");
+char *line = NULL;
+size_t len = 0;
+if (archivoMcod == NULL) {
+	Error("Error al abrir el archivo");
+}
+int linea = 1;
 
-FILE *archivo;
-char caracter;
-int paginas,tiempo,x=0,z=0;
-int lineas = 0;
-char *texto;
-archivo = fopen(direccion,"r");
-if (archivo == NULL){
-	printf("\nError de apertura del archivo. \n\n");
-}else{
-	t_procesos *proceso_nuevo;
-	proceso_nuevo = (t_procesos*) malloc(sizeof(t_procesos));
-	printf("\nEl contenido del archivo de prueba es \n\n");
-	while (feof(archivo) == 0){
-		//Leo Primer Caracter
-		caracter = fgetc(archivo);
-		paginas=0;
-		tiempo=0;
-		lineas = lineas+1;
-		proceso_nuevo->pid=PID;
-		proceso_nuevo->idcod=lineas;
-		proceso_nuevo->paginas=0;
-		proceso_nuevo->tiempo=0;
-		proceso_nuevo->estado=0;
-		proceso_nuevo->texto=NULL;
+while ((getline(&line, &len, archivoMcod) != -1) && (linea!=instruccionAEjecutar)) {
+	linea++;
+}
+do{
+//Le saco el \n final a la linea ingresada
+char **sinBarraN = string_split(line, "\n");
+//Separo el comando y su campo ingresado en caso que tenga.
+char **sinBarraPunto = string_split(sinBarraN[0], ";");
+char **comando = string_split(sinBarraPunto[0], " ");
+char **comando2 = string_split(sinBarraN[0], "\"");
 
-		if(caracter == 'I' || caracter == 'i'){
-			proceso_nuevo->funcion=1;
-			while(caracter!=' '){
-					caracter = fgetc(archivo);
-				}
-			while(caracter != ';'){
-				//A partir de aca serian todos numericos
-				caracter = fgetc(archivo);
-				paginas= devolverValorNumericoArchivo(caracter,paginas);
-				}
-			proceso_nuevo->paginas=paginas;
-		}else
+if (strcmp(comando[0], "iniciar") == 0) {
+	printf("Comando : %s\n",comando[0]);
+	printf("Paginas %s\n",comando[1]);
+	if(iniciar(CharAToInt(comando[1]),pid)==-1)
+		printf("Error, no se pudo iniciar");
 
-		if(caracter == 'L' || caracter == 'l'){
-			proceso_nuevo->funcion=2;
-			while(caracter!=' '){
-					caracter = fgetc(archivo);
-				}
-			while(caracter != ';'){
-				//A partir de aca serian todos numericos
-				caracter = fgetc(archivo);
-				paginas= devolverValorNumericoArchivo(caracter,paginas);
-				}
-			proceso_nuevo->paginas=paginas;
-		}else
-
-		if(caracter == 'E' || caracter == 'e'){
-			caracter = fgetc(archivo);
-
-			if(caracter == 'S' || caracter == 's'){
-				proceso_nuevo->funcion=3;
-
-				while(caracter!=' '){
-				caracter = fgetc(archivo);
-					}
-				caracter = fgetc(archivo);//Tomo el proximo valor al espacio que seria un número
-				while(caracter != ' '){
-				paginas= devolverValorNumericoArchivo(caracter,paginas);
-				caracter = fgetc(archivo);
-				}
-				caracter = fgetc(archivo);//Tomo el proximo valor al espacio que una comilla
-				caracter = fgetc(archivo);//Tomo el proximo valor al espacio que seria la primer letra del texto a escribir.
-				texto = malloc(paginas*5);
-				x=0;
-				z=0;
-				while(caracter != '"'){
-				texto[x]=caracter;
-				printf("\n Texto %c",texto[x]);
-				x++;
-				caracter = fgetc(archivo);
-				}
-
-				caracter = fgetc(archivo);//Aca esta el caracter ';'
-
-				texto[x]='\0';
-				proceso_nuevo->texto = strdup(texto);//malloc(sizeof(char)*x+1);
-				while(x<=z){
-				proceso_nuevo->texto[z]=texto[z];
-				z++;
-				}
-				proceso_nuevo->paginas=paginas;
-				//printf("\n Texto proceso %s",proceso_nuevo->texto);
-			}
-			if(caracter == 'N' || caracter == 'n'){
-				proceso_nuevo->funcion=4;
-				while(caracter!=' '){
-						caracter = fgetc(archivo);
-					}
-				while(caracter != ';'){
-					//A partir de aca serian todos numericos
-					caracter = fgetc(archivo);
-					tiempo= devolverValorNumericoArchivo(caracter,tiempo);
-					}
-				proceso_nuevo->tiempo=tiempo;
-			}
-		}else
-		if(caracter == 'F' || caracter == 'f'){
-			proceso_nuevo->funcion=5;
-			while(caracter != ';'){
-			caracter = fgetc(archivo);
-			}
-		}
-
-		proceso_nuevo->proximo=NULL;
-
-		if(primero==NULL){
-			//Primer Elemento
-			primero=proceso_nuevo;
-			ultimo=proceso_nuevo;
-		} else{
-		//	ultimo->proximo = proceso_nuevo;
-			ultimo=proceso_nuevo;
-		}
-		fgetc(archivo);//Aca leo el \0
-	}//Termina el While
 }
 
-fclose(archivo);
+if (strcmp(comando[0], "leer") == 0) {
+	printf("Comando : %s\n",comando[0]);
+	printf("Paginas %s\n",comando[1]);
+	if(leer(CharAToInt(comando[1]),pid)==-1)
+		printf("Error, no se pudo leer");
+}
 
+if (strcmp(comando[0], "escribir") == 0) {
+	printf("Comando : %s\n",comando[0]);
+	printf("Paginas %s\n",comando[1]);
+	printf("texto:%s\n",comando2[1]);
+	if(escribir(CharAToInt(comando[1]),comando2[1],pid)==-1)
+		printf("Error, no se pudo leer");
+}
+if (strcmp(comando[0], "entrada-salida") == 0) {
+	printf("Comando : %s\n",comando[0]);
+	printf("Tiempo %s\n",comando[1]);
+}
+
+if (strcmp(comando[0], "finalizar") == 0) {
+	printf("Comando : %s\n",comando[0]);
+}
+}while((getline(&line, &len, archivoMcod) != -1) ); //agregar quantum
+
+fclose(archivoMcod);
+
+
+}
+
+int iniciar(int paginas, int pid){
+
+	int socket_memoria;
+	conectarMemoria(&socket_memoria);
+	//13+puerto+pid+paginas
+	char* buffer = string_new();
+	string_append(&buffer,"13");
+	string_append(&buffer,obtenerSubBuffer("4500")); //VER TEMA DEL PUERTO!!!
+	string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
+	string_append(&buffer,obtenerSubBuffer(string_itoa(paginas)));
+	return EnviarDatos(socket_memoria, buffer,strlen(buffer));
+}
+
+int leer(int paginas, int pid){
+
+	int socket_memoria;
+	conectarMemoria(&socket_memoria);
+	//14+puerto+pid+pagina
+	char* buffer = string_new();
+	string_append(&buffer,"14");
+	string_append(&buffer,obtenerSubBuffer("4500")); //VER TEMA DEL PUERTO!!!
+	string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
+	string_append(&buffer,obtenerSubBuffer(string_itoa(paginas)));
+	printf("\n buffer %s\n",buffer);
+	return EnviarDatos(socket_memoria, buffer,strlen(buffer));
+}
+
+int escribir(int paginas,char* texto,int pid){
+	int socket_memoria;
+	conectarMemoria(&socket_memoria);
+	//15+puerto+pid+pagina+contenido
+	char* buffer = string_new();
+	string_append(&buffer,"15");
+	string_append(&buffer,obtenerSubBuffer("4500")); //VER TEMA DEL PUERTO!!!
+	string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
+	string_append(&buffer,obtenerSubBuffer(string_itoa(paginas)));
+	string_append(&buffer,obtenerSubBuffer(texto));
+	printf("\n buffer %s\n",buffer);
+	return EnviarDatos(socket_memoria, buffer,strlen(buffer));
 }
 
 int devolverValorNumericoArchivo(char caracter,int numero){
