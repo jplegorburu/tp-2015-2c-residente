@@ -15,10 +15,11 @@ int main(int argv, char** argc) {
 	LevantarConfig();
 
 	crearArchivoParticionSwap();
+
 	iniciarlizarListas();
+
 	mostrarListaLibres();
-	//agregarElementoALibres(257,300);
-	//mostrarListaLibres();
+
 	test = agregarProceso(2,30);
 	mostrarListaLibres();
 	mostrarListaOcupados();
@@ -52,6 +53,22 @@ int main(int argv, char** argc) {
 	mostrarListaOcupados();
 
 	test = agregarProceso(8,80);
+	mostrarListaLibres();
+	mostrarListaOcupados();
+
+	test = agregarProceso(9,30);
+	mostrarListaLibres();
+	mostrarListaOcupados();
+
+	test = agregarProceso(10,50);
+	mostrarListaLibres();
+	mostrarListaOcupados();
+
+	quitarProceso(4);
+	mostrarListaLibres();
+	mostrarListaOcupados();
+
+	test = agregarProceso(11,30);
 	mostrarListaLibres();
 	mostrarListaOcupados();
 
@@ -125,22 +142,66 @@ int agregarProceso(int pid, int paginas){
 	int paginaDeInicio = hayLugarLibreSinCompactar(paginas);
 
 	if(paginaDeInicio != 0){
-		printf("\nPROCESO AGREGADO!\n");
-		agregarProcesoYActualizarListas(pid, paginaDeInicio, paginas);
 
+		agregarProcesoYActualizarListas(pid, paginaDeInicio, paginas);
+		printf("\nPROCESO %d AGREGADO! Paginas: %d\n", pid, paginas);
 	}else{
 		if(hayLugarCompactando(paginas)){
 			//COMPACTAR
 			printf("\nCOMPACTAR!\n");
-
+			compactar();
+			paginaDeInicio = hayLugarLibreSinCompactar(paginas);
+			agregarProcesoYActualizarListas(pid, paginaDeInicio, paginas);
+			printf("\nPROCESO %d AGREGADO! Paginas: %d\n", pid, paginas);
 		}else{
 			// -1 indica proceso rechazado
-			printf("\nPROCESO RECHAZADO!\n");
+			printf("\nPROCESO %d RECHAZADO! Paginas: %d\n", pid, paginas);
 			return -1;
 		}
 	}
 	//INDICA QUE EL PROCESO SE INICIO
 	return 1;
+}
+
+void compactar(){
+	int espacioTotalLibre=0;
+	int espacioTotalOcupado=0;
+	int index=0;
+
+	int inicioAnterior=1;
+	int cantPaginasAnterior=0;
+
+	espacio_libre *libre = malloc(sizeof(espacio_libre));
+
+	libre = list_get(listaLibre,index);
+	while(libre!=NULL){
+		espacioTotalLibre = espacioTotalLibre + libre->cantidadPaginas;
+		index++;
+		libre = list_get(listaLibre, index);
+	}
+
+	index = 0;
+	espacio_ocupado *ocupado = malloc(sizeof(espacio_ocupado));
+
+	ocupado = list_get(listaOcupado, index);
+	while(ocupado!=NULL){
+		espacioTotalOcupado = espacioTotalOcupado + ocupado->cantidadPaginas;
+
+		ocupado->paginaInicio = inicioAnterior + cantPaginasAnterior;
+
+		inicioAnterior = ocupado->paginaInicio;
+		cantPaginasAnterior = ocupado->cantidadPaginas;
+
+		list_replace(listaOcupado, index, ocupado);
+
+		index++;
+		ocupado = list_get(listaOcupado, index);
+	}
+
+	list_clean(listaLibre);
+
+	agregarElementoALibres(espacioTotalOcupado, espacioTotalLibre);
+
 }
 
 void agregarProcesoYActualizarListas(int pid, int inicio, int paginas){

@@ -84,3 +84,4 @@ void quitarEspacioLibre(int inicio, int paginas);
 void agregarProcesoYActualizarListas(int pid, int inicio, int paginas);
 int agregarProceso(int pid, int paginas);
 void quitarProceso(int pid);
+void compactar();
