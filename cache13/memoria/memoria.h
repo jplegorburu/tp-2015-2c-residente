@@ -68,3 +68,5 @@ void HiloOrquestadorDeConexiones();
 int EnviarDatos(int socket, char *buffer, int cantidadDeBytesAEnviar);
 void CerrarSocket(int socket);
 void HiloOrquestadorDeConexiones();
+char* DigitosNombreArchivo(char *buffer, int *posicion);
+void informarConexionCPU(char* buffer);

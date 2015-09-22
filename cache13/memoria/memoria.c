@@ -2,7 +2,7 @@
 
 int main(int argv, char** argc) {
 
-	int iThreadOrquestador;
+	//int iThreadOrquestador;
 
 
 	//Archivo de Log
@@ -283,17 +283,26 @@ int AtiendeCliente(void * arg) {
 			emisor = ObtenerComandoMSJ(buffer);
 			//Evaluamos los comandos
 						switch (emisor) {
-						case 1:
-
+						case 1: //MSJs que manda CPU
 						funcion = ObtenerComandoMSJ(buffer+1);
-					    if(funcion==2){
-						printf("arrancando a correr programa\n");
-						int socket_swap;
-						conectarConSwap(&socket_swap);
-						EnviarDatos(socket_swap, "32",2);
-						mensaje="Ok";
-					    }
-					    break;
+					   // switch con los distintos codigos de mensaje
+							switch (funcion){
+								case 1:
+									informarConexionCPU(buffer);
+								break;
+
+								case 2:
+									printf("arrancando a correr programa\n");
+									int socket_swap;
+									conectarConSwap(&socket_swap);
+									EnviarDatos(socket_swap, "32",2);
+									mensaje="Ok";
+								break;
+							}
+						break;
+
+					//	case 4: PARA LOS MSJs que manda SWAP
+
 						default:
 						break;
 						}
@@ -398,6 +407,43 @@ int EnviarDatos(int socket, char *buffer, int cantidadDeBytesAEnviar) {
 
 	return bytecount;
 }
+
+void informarConexionCPU(char* buffer){
+	char *el_Puerto, *ip_CPU;
+	int posActual = 2;
+
+	printf("Se conecto CPU con:\n");
+
+	ip_CPU = DigitosNombreArchivo(buffer, &posActual);
+	printf("ip CPU:%s\n", ip_CPU);
+
+	el_Puerto = DigitosNombreArchivo(buffer, &posActual);
+	printf("Puerto CPU:%s\n", el_Puerto);
+
+}
+
+
+char* DigitosNombreArchivo(char *buffer, int *posicion) {
+
+			char *nombreArch;
+			int digito = 0, i = 0, j = 0, algo = 0, aux = 0, x = 0;
+
+			digito = PosicionDeBufferAInt(buffer, *posicion);
+			for (i = 1; i <= digito; i++) {
+				algo = PosicionDeBufferAInt(buffer, *posicion + i);
+				aux = aux * 10 + algo;
+			}
+			nombreArch = malloc(aux + 1);
+			for (j = *posicion + i; j < *posicion + i + aux; j++) {
+				nombreArch[x] = buffer[j];
+				x++;
+			}
+			nombreArch[x] = '\0';
+			*posicion = *posicion + i + aux;
+			return nombreArch;
+		}
+
+
 
 void CerrarSocket(int socket) {
 	close(socket);
