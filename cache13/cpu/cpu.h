@@ -39,7 +39,7 @@ int g_Cant_Hilos;
 int g_Retardo;
 int g_Ejecutando = 1;						// - Bandera que controla la ejecución o no del programa. Si está en 0 el programa se cierra.
 int g_Puerto_CPU = 4500;
-static __thread int puerto =4500;
+__thread int puerto;
 static __thread char* resultado; //Resultado de las instrucciones
 
 //pthread_t hOrquestadorConexiones; 			//Hilo de conexion

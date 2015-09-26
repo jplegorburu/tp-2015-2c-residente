@@ -35,12 +35,12 @@ int main(int argv, char** argc) {
 
 void iniciarCpu(void* arg){
 
-	int puertoCpu;
-	puertoCpu=(int)arg;
-	printf("Hola entre, puerto: %d\n", puertoCpu);
-	conectarsePlanificador(puertoCpu);
-	conectarseMemoria(puertoCpu);
-	HiloOrquestadorDeConexiones(puertoCpu);
+	puerto=(int)arg;
+	printf("Hola entre, puerto: %d\n", puerto);
+
+	conectarsePlanificador(puerto);
+	conectarseMemoria(puerto);
+	HiloOrquestadorDeConexiones(puerto);
 
 	//Hilo orquestador conexiones
 
@@ -460,7 +460,7 @@ void HiloOrquestadorDeConexiones(int puertoCpu) {
 int AtiendeCliente(void * arg) {
 	int socket = (int) arg;
 	//int id=-1;
-
+	puerto=g_Puerto_CPU-1;
 	int longitudBuffer;
 
 // Es el encabezado del mensaje. Nos dice quien envia el mensaje
@@ -491,9 +491,7 @@ int AtiendeCliente(void * arg) {
 		buffer = RecibirDatos(socket, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
 
 		int funcion;
-		//char* linea;
-		//linea = malloc(100);
-		//linea ="212101234567989277/home/utnso/workspace/tp-2015-2c-residente/cache13/planificador/programa.mcod1233";
+
 		if (bytesRecibidos > 0) {
 			//Analisamos que peticion nos está haciendo (obtenemos el comando)
 			emisor = ObtenerComandoMSJ(buffer);
@@ -511,10 +509,6 @@ int AtiendeCliente(void * arg) {
 
 								abrirArchivo(obtenerDireccion(buffer),CharAToInt(obtenerProximaInstruccion(buffer)),obtenerPID(buffer));
 
-
-								int socket_memoria;
-								conectarMemoria(&socket_memoria);
-								EnviarDatos(socket_memoria, "12",2);
 							}
 							if(funcion==2){
 								//Solicitud de estado de CPU
@@ -532,24 +526,38 @@ int AtiendeCliente(void * arg) {
 										else
 										{
 											printf("Escritura realizada \n");
-//											string_append(&resultado,"14");
-//											string_append(&resultado,obtenerSubBuffer(string_itoa(puerto))); //VER TEMA DEL PUERTO!!!
-//											string_append(&resultado,obtenerSubBuffer(string_itoa(pid)));
-//											string_append(&resultado,obtenerSubBuffer(string_itoa(paginas)));
+											string_append(&resultado,"13");
+
 										}
 
 									break;
 								case 7:
-									if(ObtenerComandoMSJ(buffer+2)==0)
+									if(ObtenerComandoMSJ(buffer+2)==0){
 										printf("No se pudo iniciar el proceso\n");
-									else
+										string_append(&resultado,"10");
+									}
+									else{
 										printf("Proceso Iniciado \n");
+										string_append(&resultado,"11");
+									}
 									break;
 								case 8:
-									if(ObtenerComandoMSJ(buffer+2)==0)
+									if(ObtenerComandoMSJ(buffer+2)==0){
 										printf("ERROR no pudo leer\n");
-									else
+										string_append(&resultado,"20");
+									}
+									else{
 										printf("Lectura realizada\n"); //Grabar Texto
+										string_append(&resultado,"2");
+										string_append(&resultado,"1");//Cant Paginas
+										string_append(&resultado,"1");//mensaje
+									}
+									break;
+								case 9:
+									{	printf("Finalizacion\n"); //Grabar Texto
+										string_append(&resultado,"5");
+										//Crear funcion para enviar a Planificador;
+									}
 									break;
 								default:
 									break;
@@ -583,6 +591,12 @@ if (archivoMcod == NULL) {
 }
 int linea = 1;
 
+string_append(&resultado,"12");
+string_append(&resultado,obtenerSubBuffer(string_itoa(puerto)));
+string_append(&resultado,obtenerSubBuffer(string_itoa(pid)));
+printf("\n RESULTADO parcial: %s\n",resultado);
+
+
 while ((getline(&line, &len, archivoMcod) != -1) && (linea!=instruccionAEjecutar)) {
 	linea++;
 }
@@ -594,19 +608,16 @@ char **sinBarraPunto = string_split(sinBarraN[0], ";");
 char **comando = string_split(sinBarraPunto[0], " ");
 char **comando2 = string_split(sinBarraN[0], "\"");
 
+
+
 if (strcmp(comando[0], "iniciar") == 0) {
-	//printf("Comando : %s\n",comando[0]);
-	//printf("Paginas %s\n",comando[1]);
 	if(iniciar(CharAToInt(comando[1]),pid)==-1)
 		printf("Error, no se pudo iniciar");
 
-	string_append(&resultado,"12");
 	sleep(g_Retardo);
 }
 
 if (strcmp(comando[0], "leer") == 0) {
-	//printf("Comando : %s\n",comando[0]);
-	//printf("Paginas %s\n",comando[1]);
 	if(leer(CharAToInt(comando[1]),pid)==-1)
 		printf("Error, no se pudo leer");
 
@@ -614,17 +625,12 @@ if (strcmp(comando[0], "leer") == 0) {
 }
 
 if (strcmp(comando[0], "escribir") == 0) {
-	//printf("Comando : %s\n",comando[0]);
-	//printf("Paginas %s\n",comando[1]);
-	//printf("texto:%s\n",comando2[1]);
 	if(escribir(CharAToInt(comando[1]),comando2[1],pid)==-1)
 		printf("Error, no se pudo leer");
 
 	sleep(g_Retardo);
 }
 if (strcmp(comando[0], "entrada-salida") == 0) {
-	//printf("Comando : %s\n",comando[0]);
-	//printf("Tiempo %s\n",comando[1]);
 	if(entradaSalida(CharAToInt(comando[1]),pid)==-1)
 		printf("Error, no se pudo leer");
 
@@ -632,7 +638,6 @@ if (strcmp(comando[0], "entrada-salida") == 0) {
 }
 
 if (strcmp(comando[0], "finalizar") == 0) {
-	//printf("Comando : %s\n",comando[0]);
 	if(finalizar(pid)==-1)
 		printf("Error, no se pudo leer");
 
