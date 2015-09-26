@@ -13,6 +13,9 @@ int main(int argv, char** argc) {
 
 	ConectarseConSwap(g_Puerto_Memoria);
 
+	if(strcmp(g_Tlb_Habilitada,"SI")==0){
+		crearTLB(g_Entradas_Tlb);
+	}
 
 	HiloOrquestadorDeConexiones();
 	//Hilo orquestador conexiones para escuchar
@@ -495,3 +498,10 @@ void ErrorFatal(const char* mensaje, ...) {
 		free(nuevo);
 	exit(EXIT_FAILURE);
 }
+
+t_list* crearTLB(int cant_entradas){
+	t_list TLB;
+	TLB = list_create();
+	return TLB;
+}
+
