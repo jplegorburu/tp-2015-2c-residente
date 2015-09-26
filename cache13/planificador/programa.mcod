@@ -1,5 +1,1 @@
-iniciar 10;
-escribir 1 "Ho la";
-leer 1;
-entrada-salida 5000;
 finalizar;

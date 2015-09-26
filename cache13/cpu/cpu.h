@@ -39,7 +39,9 @@ int g_Cant_Hilos;
 int g_Retardo;
 int g_Ejecutando = 1;						// - Bandera que controla la ejecución o no del programa. Si está en 0 el programa se cierra.
 int g_Puerto_CPU = 4500;
-int* cantProcesos;
+static __thread int puerto =4500;
+static __thread char* resultado; //Resultado de las instrucciones
+
 //pthread_t hOrquestadorConexiones; 			//Hilo de conexion
 #define BUFFERSIZE 200
 // TIPOS //
@@ -79,3 +81,6 @@ void abrirArchivo(char* direccion, int instruccionAEjecutar, int pid);
 int iniciar(int paginas, int pid);
 int leer(int paginas, int pid);
 int escribir(int paginas,char* texto,int pid);
+int entradaSalida(int tiempo,int pid);
+int finalizar(int pid);
+

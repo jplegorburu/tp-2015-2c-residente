@@ -1,5 +1,6 @@
 #include "cpu.h"
 
+
 int main(int argv, char** argc) {
 
 	//Archivo de Log
@@ -9,12 +10,12 @@ int main(int argv, char** argc) {
 	LevantarConfig();
 	pthread_t hCpu[g_Cant_Hilos]; 			//Hilo de conexion
 	int i = 0;
+
 	//Conectamos con Planificador y con Memoria:
 	while(i<g_Cant_Hilos){
 
 	int iThreadCpu = pthread_create(&hCpu[i], NULL,
 			(void*) iniciarCpu,(void*) g_Puerto_CPU );
-
 		if (iThreadCpu) {
 			fprintf(stderr,
 				"Error al crear hilo - pthread_create() return code: %d\n",
@@ -33,6 +34,7 @@ int main(int argv, char** argc) {
 }
 
 void iniciarCpu(void* arg){
+
 	int puertoCpu;
 	puertoCpu=(int)arg;
 	printf("Hola entre, puerto: %d\n", puertoCpu);
@@ -483,6 +485,7 @@ int AtiendeCliente(void * arg) {
 		if (buffer != NULL )
 			free(buffer);
 		buffer = string_new();
+		resultado = string_new();
 
 		//Recibimos los datos del cliente
 		buffer = RecibirDatos(socket, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
@@ -520,13 +523,21 @@ int AtiendeCliente(void * arg) {
 							mensaje="ok";
 							break;
 						case 3:
+							//Respuestas de la Memoria
 							funcion = ObtenerComandoMSJ(buffer+1);
 							switch(funcion){
 								case 6:
 									if(ObtenerComandoMSJ(buffer+2)==0)
 											printf("ERROR! No se puede escribir \n");
 										else
+										{
 											printf("Escritura realizada \n");
+//											string_append(&resultado,"14");
+//											string_append(&resultado,obtenerSubBuffer(string_itoa(puerto))); //VER TEMA DEL PUERTO!!!
+//											string_append(&resultado,obtenerSubBuffer(string_itoa(pid)));
+//											string_append(&resultado,obtenerSubBuffer(string_itoa(paginas)));
+										}
+
 									break;
 								case 7:
 									if(ObtenerComandoMSJ(buffer+2)==0)
@@ -584,34 +595,48 @@ char **comando = string_split(sinBarraPunto[0], " ");
 char **comando2 = string_split(sinBarraN[0], "\"");
 
 if (strcmp(comando[0], "iniciar") == 0) {
-	printf("Comando : %s\n",comando[0]);
-	printf("Paginas %s\n",comando[1]);
+	//printf("Comando : %s\n",comando[0]);
+	//printf("Paginas %s\n",comando[1]);
 	if(iniciar(CharAToInt(comando[1]),pid)==-1)
 		printf("Error, no se pudo iniciar");
 
+	string_append(&resultado,"12");
+	sleep(g_Retardo);
 }
 
 if (strcmp(comando[0], "leer") == 0) {
-	printf("Comando : %s\n",comando[0]);
-	printf("Paginas %s\n",comando[1]);
+	//printf("Comando : %s\n",comando[0]);
+	//printf("Paginas %s\n",comando[1]);
 	if(leer(CharAToInt(comando[1]),pid)==-1)
 		printf("Error, no se pudo leer");
+
+	sleep(g_Retardo);
 }
 
 if (strcmp(comando[0], "escribir") == 0) {
-	printf("Comando : %s\n",comando[0]);
-	printf("Paginas %s\n",comando[1]);
-	printf("texto:%s\n",comando2[1]);
+	//printf("Comando : %s\n",comando[0]);
+	//printf("Paginas %s\n",comando[1]);
+	//printf("texto:%s\n",comando2[1]);
 	if(escribir(CharAToInt(comando[1]),comando2[1],pid)==-1)
 		printf("Error, no se pudo leer");
+
+	sleep(g_Retardo);
 }
 if (strcmp(comando[0], "entrada-salida") == 0) {
-	printf("Comando : %s\n",comando[0]);
-	printf("Tiempo %s\n",comando[1]);
+	//printf("Comando : %s\n",comando[0]);
+	//printf("Tiempo %s\n",comando[1]);
+	if(entradaSalida(CharAToInt(comando[1]),pid)==-1)
+		printf("Error, no se pudo leer");
+
+	sleep(g_Retardo);
 }
 
 if (strcmp(comando[0], "finalizar") == 0) {
-	printf("Comando : %s\n",comando[0]);
+	//printf("Comando : %s\n",comando[0]);
+	if(finalizar(pid)==-1)
+		printf("Error, no se pudo leer");
+
+	sleep(g_Retardo);
 }
 }while((getline(&line, &len, archivoMcod) != -1) ); //agregar quantum
 
@@ -627,7 +652,7 @@ int iniciar(int paginas, int pid){
 	//13+puerto+pid+paginas
 	char* buffer = string_new();
 	string_append(&buffer,"13");
-	string_append(&buffer,obtenerSubBuffer("4500")); //VER TEMA DEL PUERTO!!!
+	string_append(&buffer,obtenerSubBuffer(string_itoa(puerto))); //VER TEMA DEL PUERTO!!!
 	string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(paginas)));
 	return EnviarDatos(socket_memoria, buffer,strlen(buffer));
@@ -640,7 +665,7 @@ int leer(int paginas, int pid){
 	//14+puerto+pid+pagina
 	char* buffer = string_new();
 	string_append(&buffer,"14");
-	string_append(&buffer,obtenerSubBuffer("4500")); //VER TEMA DEL PUERTO!!!
+	string_append(&buffer,obtenerSubBuffer(string_itoa(puerto))); //VER TEMA DEL PUERTO!!!
 	string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(paginas)));
 	printf("\n buffer %s\n",buffer);
@@ -653,12 +678,37 @@ int escribir(int paginas,char* texto,int pid){
 	//15+puerto+pid+pagina+contenido
 	char* buffer = string_new();
 	string_append(&buffer,"15");
-	string_append(&buffer,obtenerSubBuffer("4500")); //VER TEMA DEL PUERTO!!!
+	string_append(&buffer,obtenerSubBuffer(string_itoa(puerto)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(paginas)));
 	string_append(&buffer,obtenerSubBuffer(texto));
 	printf("\n buffer %s\n",buffer);
 	return EnviarDatos(socket_memoria, buffer,strlen(buffer));
+}
+
+int entradaSalida(int tiempo,int pid){
+	int socket_Plani;
+	conectarPlanificador(&socket_Plani);
+	//13+puerto+pid+TiempoBloqueado+CantIntrucciones+Resultados
+	char* buffer = string_new();
+	string_append(&buffer,"13");
+	string_append(&buffer,obtenerSubBuffer(string_itoa(puerto)));
+	string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
+	string_append(&buffer,obtenerSubBuffer(string_itoa(tiempo)));
+	printf("\n buffer %s\n",buffer);
+	return EnviarDatos(socket_Plani, buffer,strlen(buffer));
+}
+
+int finalizar(int pid){
+	int socket_Memoria;
+	conectarMemoria(&socket_Memoria);
+	//12+puerto+pid+CantIntruccionesRealizadas+Resultados
+	char* buffer = string_new();
+	string_append(&buffer,"12");
+	string_append(&buffer,obtenerSubBuffer(string_itoa(puerto)));
+	string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
+	printf("\n buffer %s\n",buffer);
+	return EnviarDatos(socket_Memoria, buffer,strlen(buffer));
 }
 
 int devolverValorNumericoArchivo(char caracter,int numero){
