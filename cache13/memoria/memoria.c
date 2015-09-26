@@ -13,8 +13,9 @@ int main(int argv, char** argc) {
 
 	ConectarseConSwap(g_Puerto_Memoria);
 
+
 	if(strcmp(g_Tlb_Habilitada,"SI")==0){
-		crearTLB(g_Entradas_Tlb);
+	//	crearTLB(g_Entradas_Tlb);
 	}
 
 	HiloOrquestadorDeConexiones();
@@ -57,8 +58,11 @@ int conectarConSwap(int *socket_swap){
 			conexionOk = 1;
 		}
 		freeaddrinfo(serverInfo);	// No lo necesitamos mas
+
+
 		return conexionOk;
 }
+
 
 #if 1 // METODOS CONFIGURACION //
 void LevantarConfig() {
@@ -66,6 +70,13 @@ void LevantarConfig() {
 	//log_info(logger, "Archivo de configuración: %s", PATH_CONFIG);
 	// Nos fijamos si el archivo de conf. pudo ser leido y si tiene los parametros
 	if (config->properties->table_current_size != 0) {
+
+		// Preguntamos y obtenemos la ip del swap
+		if (config_has_property(config, "IP_MEMORIA")) {
+			g_Ip_Memoria = config_get_string_value(config,"IP_MEMORIA");
+		} else{
+			Error("No se pudo leer el parametro IP_MEMORIA");
+		}
 
 		// Preguntamos y obtenemos el puerto donde esta escuchando la memoria
 		if (config_has_property(config, "PUERTO_ESCUCHA")) {
@@ -214,7 +225,7 @@ int ChartToInt(char x) {
 int CharAToInt(char* x) {
 	int numero = 0;
 	char * aux = string_new();
-	string_append_with_format(&aux, "%c", x);
+	string_append_with_format(&aux, "%s", x);
 
 	numero = strtol(aux, (char **) NULL, 10);
 
@@ -292,19 +303,31 @@ int AtiendeCliente(void * arg) {
 							switch (funcion){
 								case 1:
 									informarConexionCPU(buffer);
+
 								break;
 
 								case 2:
-									printf("arrancando a correr programa\n");
-									int socket_swap;
-									conectarConSwap(&socket_swap);
-									EnviarDatos(socket_swap, "32",2);
-									mensaje="Ok";
+									informarFinDelProceso(buffer);
+
+								break;
+
+								case 3:
+									informarInicio(buffer);
+							    break;
+								case 4:
+									informarLeer(buffer);
+								break;
+								case 5:
+									informarEscribir(buffer);
 								break;
 							}
+							mensaje = "ok";
+
 						break;
 
-					//	case 4: PARA LOS MSJs que manda SWAP
+						case 4: //PARA LOS MSJs que manda SWAP
+                        mensaje = "ok";
+						break;
 
 						default:
 						break;
@@ -323,26 +346,85 @@ int AtiendeCliente(void * arg) {
 	return code;
 }
 
+void finProcesoSwap(int pid){
+
+		int socket_swap;
+		conectarConSwap(&socket_swap);
+		//35+pid
+		char* buffer = string_new();
+		string_append(&buffer,"35");
+		string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
+		EnviarDatos(socket_swap, buffer,strlen(buffer));
+
+}
+
+void inicioProcesoSwap(int pid, int cant_pag){
+
+		int socket_swap;
+		conectarConSwap(&socket_swap);
+		//32+pid+cantidad paginas
+		char* buffer = string_new();
+		string_append(&buffer,"32");
+		string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
+		string_append(&buffer,obtenerSubBuffer(string_itoa(cant_pag)));
+		EnviarDatos(socket_swap, buffer,strlen(buffer));
+
+}
+
+void leerSwap(int pid, int num_pag){
+
+		int socket_swap;
+		conectarConSwap(&socket_swap);
+		//33+pid+numero pagina
+		char* buffer = string_new();
+		string_append(&buffer,"33");
+		string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
+		string_append(&buffer,obtenerSubBuffer(string_itoa(num_pag)));
+		EnviarDatos(socket_swap, buffer,strlen(buffer));
+
+}
+
+void escribirSwap(int pid, int num_pag, char* contenido){
+
+		int socket_swap;
+		conectarConSwap(&socket_swap);
+		//34+pid+numero pagina
+		char* buffer = string_new();
+		string_append(&buffer,"34");
+		string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
+		string_append(&buffer,obtenerSubBuffer(string_itoa(num_pag)));
+		string_append(&buffer,obtenerSubBuffer(contenido));
+		EnviarDatos(socket_swap, buffer,strlen(buffer));
+
+}
+
 void ConectarseConSwap(int g_Puerto_Memoria){
 	int socket_swap;
-//	int bytesRecibidos,cantRafaga=1,tamanio;
-	char*buffer = string_new();
-//	char*bufferR = string_new();
 
-//	char*bufferE = string_new();
+	//int bytesRecibidos,cantRafaga=1,tamanio;
+	char*buffer = string_new();
+	char*bufferR = string_new();
+	char*bufferE = string_new();
+	char*aux;
+
 
 	if(conectarConSwap(&socket_swap)){
 		printf("Conexion con Swap exitosa.\n");
 
 		string_append(&buffer,"31");
 
-	//	EnviarDatos(socket_swap,buffer, strlen(buffer));
-	//	bufferR = RecibirDatos(socket_Memoria,bufferR, &bytesRecibidos,&cantRafaga,&tamanio);
+		aux=obtenerSubBuffer(g_Ip_Memoria);
+		string_append(&buffer,aux);
+		aux=obtenerSubBuffer(string_itoa(g_Puerto_Memoria));
+		string_append(&buffer,aux);
+
+		EnviarDatos(socket_swap,buffer, strlen(buffer));
+		//bufferR = RecibirDatos(socket_swap,bufferR, &bytesRecibidos,&cantRafaga,&tamanio);
 
 		free(buffer);
+		free(bufferR);
+		free(bufferE);
 
-//		free(bufferR);
-//		free(bufferE);
 	}
 	else {
 		printf("No se pudo conectar al swap\n");
@@ -425,6 +507,79 @@ void informarConexionCPU(char* buffer){
 
 }
 
+void informarFinDelProceso(char* buffer){
+	char *el_Puerto, *pid;
+	int posActual = 2;
+
+	printf("Fin de Proceso:\n");
+
+	el_Puerto = DigitosNombreArchivo(buffer, &posActual);
+		printf("Puerto CPU:%s\n", el_Puerto);
+
+	pid = DigitosNombreArchivo(buffer, &posActual);
+	printf("pid:%s\n", pid);
+
+	finProcesoSwap(CharAToInt(pid));
+} // fijarse que hace la memoria con esto.
+
+void informarInicio(char* buffer){
+	char *el_Puerto, *pid, *cant_pag;
+	int posActual = 2;
+
+	printf("Inicio:\n");
+
+	el_Puerto = DigitosNombreArchivo(buffer, &posActual);
+		printf("Puerto CPU:%s\n", el_Puerto);
+
+	pid = DigitosNombreArchivo(buffer, &posActual);
+	printf("pid:%s\n", pid);
+
+	cant_pag = DigitosNombreArchivo(buffer, &posActual);
+		printf("Cantidad paginas:%s\n", cant_pag);
+
+		inicioProcesoSwap(CharAToInt(pid),CharAToInt(cant_pag));
+}
+
+void informarLeer(char* buffer){
+	char *el_Puerto, *pid, *num_pag;
+	int posActual = 2;
+
+	printf("Leer:\n");
+
+	el_Puerto = DigitosNombreArchivo(buffer, &posActual);
+		printf("Puerto CPU:%s\n", el_Puerto);
+
+	pid = DigitosNombreArchivo(buffer, &posActual);
+	printf("pid:%s\n", pid);
+
+	num_pag = DigitosNombreArchivo(buffer, &posActual);
+		printf("Número pagina:%s\n", num_pag);
+
+		leerSwap(CharAToInt(pid), CharAToInt(num_pag));
+}
+
+void informarEscribir(char* buffer){
+	char *el_Puerto, *pid, *num_pag, *contenido;
+	int posActual = 2;
+
+	printf("Escribir:\n");
+
+	el_Puerto = DigitosNombreArchivo(buffer, &posActual);
+		printf("Puerto CPU:%s\n", el_Puerto);
+
+	pid = DigitosNombreArchivo(buffer, &posActual);
+	printf("pid:%s\n", pid);
+
+	num_pag = DigitosNombreArchivo(buffer, &posActual);
+			printf("Número pagina:%s\n", num_pag);
+
+	contenido = DigitosNombreArchivo(buffer, &posActual);
+			printf("Contenido:%s\n", contenido);
+
+	escribirSwap(CharAToInt(pid),CharAToInt(num_pag),contenido);
+
+}
+
 
 char* DigitosNombreArchivo(char *buffer, int *posicion) {
 
@@ -499,9 +654,27 @@ void ErrorFatal(const char* mensaje, ...) {
 	exit(EXIT_FAILURE);
 }
 
-t_list* crearTLB(int cant_entradas){
-	t_list TLB;
-	TLB = list_create();
-	return TLB;
+char* obtenerSubBuffer(char *nombre) {
+			// Esta funcion recibe un nombre y devuelve ese nombre de acuerdo al protocolo. Ej: carlos ------> 16carlos
+			char *aux = string_new();
+			int tamanioNombre = 0;
+			float tam = 0;
+			int cont = 0;
+
+			tamanioNombre = strlen(nombre);
+			tam = tamanioNombre;
+			while (tam >= 1) {
+				tam = tam / 10;
+				cont++;
+			}
+			string_append(&aux, string_itoa(cont));
+			string_append(&aux, string_itoa(tamanioNombre));
+			string_append(&aux, nombre);
+
+			return aux;
 }
+//t_tlb* crearTLB(int cant_entradas){
+	//t_tlb TLB;
+//	return TLB;
+//}
 

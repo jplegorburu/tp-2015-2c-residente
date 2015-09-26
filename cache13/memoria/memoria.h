@@ -34,6 +34,7 @@ t_log* logger;								// Logger del commons
 char* g_MensajeError;						//Mensaje de error global.
 pthread_t hConsola;	// Definimos los hilos principales
 
+char* g_Ip_Memoria;
 int g_Puerto_Memoria;
 char* g_Ip_Swap;
 char* g_Puerto_Swap;
@@ -58,6 +59,11 @@ typedef enum {
 	OtroError,
 } t_error;							//Tipo error
 
+
+typedef struct {
+
+} t_tlb;
+
 int conectarConSwap(int *socket_swap);
 void ConectarseConSwap(int g_puerto_memoria);
 void LevantarConfig();
@@ -70,3 +76,12 @@ void CerrarSocket(int socket);
 void HiloOrquestadorDeConexiones();
 char* DigitosNombreArchivo(char *buffer, int *posicion);
 void informarConexionCPU(char* buffer);
+void informarFinDelProceso(char* buffer);
+void informarInicio(char* buffer);
+void informarLeer(char* buffer);
+void informarEscribir(char* buffer);
+char* obtenerSubBuffer(char *nombre);
+void inicioProcesoSwap(int pid, int cant_pag);
+void finProcesoSwap(int pid);
+void leerSwap(int pid, int num_pag);
+void escribirSwap(int pid, int num_pag, char* contenido);
