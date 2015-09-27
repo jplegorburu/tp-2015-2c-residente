@@ -45,7 +45,7 @@ void iniciarCpu(void* arg){
 	//Hilo orquestador conexiones
 
 	/*int iThreadOrquestador = pthread_create(&hOrquestadorConexiones, NULL,
-		(void*) HiloOrquestadorDeConexiones, puertoCpu );
+		(void*) HiloOrquestadorDeConexiones, NULL );
 
 	if (iThreadOrquestador) {
 		fprintf(stderr,
@@ -55,7 +55,7 @@ void iniciarCpu(void* arg){
 	}
 
 	pthread_join(hOrquestadorConexiones, NULL );
-	 */
+*/
 
 }
 void conectarsePlanificador(int puertoCpu){
@@ -90,23 +90,31 @@ void conectarsePlanificador(int puertoCpu){
 
 void conectarseMemoria(int puertoCpu){
 	int socket_Memoria;
-	//int bytesRecibidos,cantRafaga=1,tamanio;
+	int bytesRecibidos,cantRafaga=1,tamanio;
 	char*buffer = string_new();
 	char*bufferR = string_new();
 	char*bufferE = string_new();
-
+	char*aux;
 	if(conectarMemoria(&socket_Memoria)){
 		printf("Conexion ok Memoria\n");
-		string_append(&buffer,"11");
-			//EnviarDatos(socket_Memoria,buffer, strlen(buffer));
-			//bufferR = RecibirDatos(socket_Memoria,bufferR, &bytesRecibidos,&cantRafaga,&tamanio);
 
-		free(buffer);
-		free(bufferR);
-		free(bufferE);
-	}else {
-		printf("No se pudo conectar a la memoria\n");
-	}
+				//ENVIO a MEMORIA
+				//11210127.0.0.1143000 primer conexion, manda ip y puerto.
+				string_append(&buffer,"11");
+				aux=obtenerSubBuffer(g_Ip_Planificador); //Le mando la ip del planificador que es la misma que CPU
+				string_append(&buffer,aux);
+				aux=obtenerSubBuffer(string_itoa(puertoCpu));
+				string_append(&buffer,aux);
+
+				EnviarDatos(socket_Memoria,buffer, strlen(buffer));
+				bufferR = RecibirDatos(socket_Memoria,bufferR, &bytesRecibidos,&cantRafaga,&tamanio);
+
+				free(buffer);
+				free(bufferR);
+				free(bufferE);
+				} else {
+					printf("No se pudo conectar al Planificador\n");
+				}
 }
 
 char* RecibirDatos(int socket, char *buffer, int *bytesRecibidos,int *cantRafaga,int *tamanio) {
@@ -401,7 +409,7 @@ void ErrorFatal(const char* mensaje, ...) {
 }
 
 void HiloOrquestadorDeConexiones(int puertoCpu) {
-
+	printf("SOY EL PUERTO HILO:%d",puerto);
 	int socket_host;
 	struct sockaddr_in client_addr;
 	struct sockaddr_in my_addr;
@@ -419,7 +427,7 @@ void HiloOrquestadorDeConexiones(int puertoCpu) {
 	}
 
 	my_addr.sin_family = AF_INET;
-	my_addr.sin_port = htons(puertoCpu);
+	my_addr.sin_port = htons(puerto);
 	my_addr.sin_addr.s_addr = htons(INADDR_ANY );
 	memset(&(my_addr.sin_zero), '\0', 8 * sizeof(char));
 
@@ -448,8 +456,11 @@ void HiloOrquestadorDeConexiones(int puertoCpu) {
 					//socket_client);
 			// Aca hay que crear un nuevo hilo, que será el encargado de atender al cliente
 			pthread_t hNuevoCliente;
+			struct struct_atiende args;
+			args.puertoCpu=puerto;
+			args.socket=socket_client;
 			pthread_create(&hNuevoCliente, NULL, (void*) AtiendeCliente,
-					(void *) socket_client);
+					(void *) &args);
 		} else {
 			Error("ERROR AL ACEPTAR LA CONEXIÓN DE UN CLIENTE");
 		}
@@ -458,9 +469,12 @@ void HiloOrquestadorDeConexiones(int puertoCpu) {
 }
 
 int AtiendeCliente(void * arg) {
-	int socket = (int) arg;
+	struct struct_atiende *args = arg;
+	puerto=args->puertoCpu;
+	printf("SOY EL PUERTO ATIENDE CLIENTE:%d",puerto);
+	int socket=args->socket;
 	//int id=-1;
-	puerto=g_Puerto_CPU-1;
+	//puerto=g_Puerto_CPU-1;
 	int longitudBuffer;
 
 // Es el encabezado del mensaje. Nos dice quien envia el mensaje
@@ -562,6 +576,7 @@ int AtiendeCliente(void * arg) {
 								default:
 									break;
 								}
+							mensaje="ok";
 						break;
 						default:
 							break;
@@ -581,7 +596,7 @@ int AtiendeCliente(void * arg) {
 }
 
 void abrirArchivo(char* direccion, int instruccionAEjecutar, int pid){
-
+	printf("SOY EL PUERTO:%d",puerto);
 FILE *archivoMcod;
 archivoMcod = fopen(direccion,"r");
 char *line = NULL;
@@ -705,6 +720,7 @@ int entradaSalida(int tiempo,int pid){
 }
 
 int finalizar(int pid){
+	printf("SOY EL PUERTO:%d",puerto);
 	int socket_Memoria;
 	conectarMemoria(&socket_Memoria);
 	//12+puerto+pid+CantIntruccionesRealizadas+Resultados

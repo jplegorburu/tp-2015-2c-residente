@@ -795,9 +795,9 @@ int AtiendeCliente(void * arg) {
 			if (conectarCpu(&socket, ip, puerto)) {
 				tamanioE = strlen(bufferE);
 				if (tamanioE == EnviarDatos(socket, bufferE, tamanioE)) {
-					bufferR = RecibirDatos(socket, bufferR, &bytesRecibidos,
-							&cantRafaga, &tamanio);
-					printf("TAMANIO DE BUFFER:%d\n", tamanio);
+					//bufferR = RecibirDatos(socket, bufferR, &bytesRecibidos,
+					//		&cantRafaga, &tamanio);
+					//printf("TAMANIO DE BUFFER:%d\n", tamanio);
 					if (bufferR != NULL) {
 						return 1;
 					}

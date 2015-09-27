@@ -39,11 +39,19 @@ int g_Cant_Hilos;
 int g_Retardo;
 int g_Ejecutando = 1;						// - Bandera que controla la ejecución o no del programa. Si está en 0 el programa se cierra.
 int g_Puerto_CPU = 4500;
-__thread int puerto;
-static __thread char* resultado; //Resultado de las instrucciones
+static __thread int puerto;
+__thread char* resultado; //Resultado de las instrucciones
+// pthread_t hOrquestadorConexiones; 			//Hilo de conexion
 
-//pthread_t hOrquestadorConexiones; 			//Hilo de conexion
 #define BUFFERSIZE 200
+
+//Estructura para pasarle a AtiendeCliente para que reconzca el puerto.
+struct struct_atiende {
+    int socket;
+    int puertoCpu;
+    pthread_mutex_t* sInstruccion;
+}args;
+
 // TIPOS //
 typedef enum {
 	CantidadArgumentosIncorrecta,
@@ -67,7 +75,7 @@ int EnviarDatos(int socket, char *buffer, int cantidadDeBytesAEnviar);
 int cuentaDigitos(int valor);
 int ObtenerTamanio (char *buffer , int posicion, int dig_tamanio);
 int AtiendeCliente(void * arg);
-void HiloOrquestadorDeConexiones(int puertoCpu);
+void HiloOrquestadorDeConexiones(int puerto);
 void iniciarCpu(void* arg);
 void CerrarSocket(int socket);
 int ObtenerComandoMSJ(char* buffer);

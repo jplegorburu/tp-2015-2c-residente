@@ -45,9 +45,28 @@ int g_Entradas_Tlb;
 char* g_Tlb_Habilitada;
 int g_Retardo_Memoria;
 int g_Ejecutando = 1;						// - Bandera que controla la ejecución o no del programa. Si está en 0 el programa se cierra.
-
-#define BUFFERSIZE 50
+t_list* lista_cpu; 							//Lista de Cpus conectadas.
+#define BUFFERSIZE 200
 pthread_t hOrquestadorConexiones;
+
+typedef struct {
+	char * ip;
+	char * puerto;
+	int procesoActivo;
+} t_cpu;
+
+t_cpu *cpu_create(char *ipCpu, char* puertoCpu) {
+	t_cpu *new = malloc(sizeof(t_cpu));
+	new->ip = strdup(ipCpu);
+	new->puerto = strdup(puertoCpu);
+	new->procesoActivo = 0;
+	return new;
+}
+
+void cpu_destroy(t_cpu* self) {
+	free(self);
+}
+
 
 // TIPOS //
 typedef enum {
@@ -85,3 +104,15 @@ void inicioProcesoSwap(int pid, int cant_pag);
 void finProcesoSwap(int pid);
 void leerSwap(int pid, int num_pag);
 void escribirSwap(int pid, int num_pag, char* contenido);
+void resultadoInicioSwap(char* buffer);
+void resultadoLecturaSwap(char* buffer);
+void resultadoEscrituraSwap(char* buffer);
+void resultadoFinSwap(char* buffer);
+int conectarConCpu(int *socket_cpu, char*ip, char*puerto);
+t_cpu* buscarCPUporPid(int pid);
+t_cpu* buscarCPUporPuerto(char* puerto);
+int finProcesoCpu(char*ip, char*puerto);
+int inicioProcesoCpu(char*ip, char*puerto,char* resultado);
+int escribirCpu(char*ip, char*puerto,char* resultado);
+int leerCpu(char*ip, char*puerto,char* pagina,char* contenido);
+

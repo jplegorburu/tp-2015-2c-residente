@@ -4,7 +4,7 @@ int main(int argv, char** argc) {
 
 	//int iThreadOrquestador;
 
-
+	lista_cpu=list_create();  //Creo la lista de las cpu.
 	//Archivo de Log
 	logger = log_create(NOMBRE_ARCHIVO_LOG, "memoria", true, LOG_LEVEL_TRACE);
 
@@ -290,7 +290,7 @@ int AtiendeCliente(void * arg) {
 
 		//Recibimos los datos del cliente
 		buffer = RecibirDatos(socket, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
-
+		int error;
 		int funcion;
 		if (bytesRecibidos > 0) {
 			//Analisamos que peticion nos está haciendo (obtenemos el comando)
@@ -326,7 +326,34 @@ int AtiendeCliente(void * arg) {
 						break;
 
 						case 4: //PARA LOS MSJs que manda SWAP
-                        mensaje = "ok";
+							funcion = ObtenerComandoMSJ(buffer+1);
+						   // switch con los distintos codigos de mensaje
+								switch (funcion){
+									case 1: //Inicio
+										resultadoInicioSwap(buffer);
+									break;
+
+									case 2: //Lectura
+
+										error = ObtenerComandoMSJ(buffer+2);
+										if(error==0){
+											printf("Error en la lectura\n");
+
+										}else{
+											resultadoLecturaSwap(buffer);
+										}
+
+									break;
+
+									case 3: //Escritura
+										resultadoEscrituraSwap(buffer);
+									break;
+
+									case 4: //Fin
+										resultadoFinSwap(buffer);
+									break;
+								}
+						mensaje = "ok";
 						break;
 
 						default:
@@ -494,16 +521,29 @@ int EnviarDatos(int socket, char *buffer, int cantidadDeBytesAEnviar) {
 }
 
 void informarConexionCPU(char* buffer){
-	char *el_Puerto, *ip_CPU;
-	int posActual = 2;
+	char *la_Ip, *el_Puerto;
+	int digitosCantNumIp = 0, tamanioDeIp;
+	int posActual = 0;
+	t_cpu * la_cpu;
 
-	printf("Se conecto CPU con:\n");
+	digitosCantNumIp = PosicionDeBufferAInt(buffer, 2);
 
-	ip_CPU = DigitosNombreArchivo(buffer, &posActual);
-	printf("ip CPU:%s\n", ip_CPU);
+	tamanioDeIp = ObtenerTamanio(buffer, 3, digitosCantNumIp);
 
+	if (tamanioDeIp >= 10) {
+		posActual = digitosCantNumIp;
+	} else {
+		posActual = 1 + digitosCantNumIp;
+	}
+	//Chequeo el tamaño de la ip xq si es mas chica de 10 puede generar fallas.
+	la_Ip = DigitosNombreArchivo(buffer, &posActual);
+	printf("Ip:%s\n",la_Ip);
 	el_Puerto = DigitosNombreArchivo(buffer, &posActual);
-	printf("Puerto CPU:%s\n", el_Puerto);
+	printf("Puerto:%s\n",el_Puerto);
+	//Agrego la cpu conectada a la lista de cpu activas.
+	la_cpu = cpu_create(la_Ip, el_Puerto);
+	list_add(lista_cpu, la_cpu);
+
 
 }
 
@@ -519,8 +559,14 @@ void informarFinDelProceso(char* buffer){
 	pid = DigitosNombreArchivo(buffer, &posActual);
 	printf("pid:%s\n", pid);
 
+
+	//Agrego el proceso a la cpu correspondiente
+	t_cpu* la_cpu =buscarCPUporPuerto(el_Puerto);
+	//Busco la CPU por el puerto
+	la_cpu->procesoActivo=CharAToInt(pid);
+	//Le agreguo el proceso activo correspondiente.
 	finProcesoSwap(CharAToInt(pid));
-} // fijarse que hace la memoria con esto.
+}
 
 void informarInicio(char* buffer){
 	char *el_Puerto, *pid, *cant_pag;
@@ -537,7 +583,13 @@ void informarInicio(char* buffer){
 	cant_pag = DigitosNombreArchivo(buffer, &posActual);
 		printf("Cantidad paginas:%s\n", cant_pag);
 
-		inicioProcesoSwap(CharAToInt(pid),CharAToInt(cant_pag));
+	//Agrego el proceso a la cpu correspondiente
+	t_cpu* la_cpu =buscarCPUporPuerto(el_Puerto);
+	//Busco la CPU por el puerto
+	la_cpu->procesoActivo=CharAToInt(pid);
+	//Le agreguo el proceso activo correspondiente.
+
+	inicioProcesoSwap(CharAToInt(pid),CharAToInt(cant_pag));
 }
 
 void informarLeer(char* buffer){
@@ -555,7 +607,13 @@ void informarLeer(char* buffer){
 	num_pag = DigitosNombreArchivo(buffer, &posActual);
 		printf("Número pagina:%s\n", num_pag);
 
-		leerSwap(CharAToInt(pid), CharAToInt(num_pag));
+	//Agrego el proceso a la cpu correspondiente
+	t_cpu* la_cpu =buscarCPUporPuerto(el_Puerto);
+	//Busco la CPU por el puerto
+	la_cpu->procesoActivo=CharAToInt(pid);
+	//Le agreguo el proceso activo correspondiente.
+
+	leerSwap(CharAToInt(pid), CharAToInt(num_pag));
 }
 
 void informarEscribir(char* buffer){
@@ -575,6 +633,12 @@ void informarEscribir(char* buffer){
 
 	contenido = DigitosNombreArchivo(buffer, &posActual);
 			printf("Contenido:%s\n", contenido);
+
+	//Agrego el proceso a la cpu correspondiente
+	t_cpu* la_cpu =buscarCPUporPuerto(el_Puerto);
+	//Busco la CPU por el puerto
+	la_cpu->procesoActivo=CharAToInt(pid);
+	//Le agreguo el proceso activo correspondiente.
 
 	escribirSwap(CharAToInt(pid),CharAToInt(num_pag),contenido);
 
@@ -672,6 +736,215 @@ char* obtenerSubBuffer(char *nombre) {
 			string_append(&aux, nombre);
 
 			return aux;
+}
+
+void resultadoInicioSwap(char* buffer){
+	char *resultado, *pid;
+	int posActual = 2;
+
+	printf("Resultado Inicio:\n");
+
+	pid = DigitosNombreArchivo(buffer, &posActual);
+		printf("PID:%s\n", pid);
+	resultado = (buffer+posActual);
+		printf("RESULTADO:%s\n", resultado);
+	//Busco la CPU en la lista donde se esta ejecutando el proceso.
+	t_cpu* la_cpu = buscarCPUporPid(CharAToInt(pid));
+
+	inicioProcesoCpu(la_cpu->ip,la_cpu->puerto, resultado);
+}
+
+void resultadoLecturaSwap(char* buffer){
+	char *contenido, *pid, *pagina, *error;
+	int posActual = 2;
+
+	printf("Resultado Lectura:\n");
+
+	pid = DigitosNombreArchivo(buffer, &posActual);
+		printf("PID:%s\n", pid);
+	error = buffer+posActual;
+	if(!strcmp(error,"0")){
+	//Busco la CPU en la lista donde se esta ejecutando el proceso.
+	t_cpu* la_cpu = buscarCPUporPid(CharAToInt(pid));
+	leerCpuError(la_cpu->procesoActivo,la_cpu->ip,la_cpu->puerto);
+	}
+	else
+	{
+	pagina = DigitosNombreArchivo(buffer, &posActual);
+		printf("PAGINA:%s\n", pagina);
+	contenido = DigitosNombreArchivo(buffer, &posActual);
+		printf("CONTENIDO:%s\n", contenido);
+	//Busco la CPU en la lista donde se esta ejecutando el proceso.
+	t_cpu* la_cpu = buscarCPUporPid(CharAToInt(pid));
+	leerCpu(la_cpu->ip,la_cpu->puerto,pagina, contenido);
+
+	}
+}
+
+void resultadoEscrituraSwap(char* buffer){
+	char *resultado, *pid;
+	int posActual = 2;
+
+	printf("Resultado Escritura:\n");
+
+	pid = DigitosNombreArchivo(buffer, &posActual);
+		printf("PID:%s\n", pid);
+	resultado = (buffer+posActual);
+		printf("RESULTADO:%s\n", resultado);
+	//Busco la CPU en la lista donde se esta ejecutando el proceso.
+	t_cpu* la_cpu = buscarCPUporPid(CharAToInt(pid));
+
+	escribirCpu(la_cpu->ip,la_cpu->puerto, resultado);
+
+}
+
+void resultadoFinSwap(char* buffer){
+	char *resultado, *pid;
+	int posActual = 2;
+
+	printf("Resultado Fin:\n");
+
+	pid = DigitosNombreArchivo(buffer, &posActual);
+		printf("PID:%s\n", pid);
+	resultado = (buffer+posActual);
+		printf("RESULTADO:%s\n", resultado);
+	//Busco la CPU en la lista donde se esta ejecutando el proceso.
+	t_cpu* la_cpu = buscarCPUporPid(CharAToInt(pid));
+
+	finProcesoCpu(la_cpu->ip,la_cpu->puerto);
+}
+
+int finProcesoCpu(char*ip, char*puerto){
+
+		int socket_cpu;
+		if(!conectarConCpu(&socket_cpu, ip, puerto)){
+			//Error conexion
+			return 0;
+		}
+		//39+pid
+		char* buffer = string_new();
+		string_append(&buffer,"39");
+		EnviarDatos(socket_cpu, buffer,strlen(buffer));
+		return 1;
+}
+
+int inicioProcesoCpu(char*ip, char*puerto,char* resultado){
+
+	int socket_cpu;
+	if(!conectarConCpu(&socket_cpu, ip, puerto)){
+		//Error conexion
+		return 0;
+	}
+	//35+pid
+	char* buffer = string_new();
+	string_append(&buffer,"37");
+	string_append(&buffer,resultado);
+	EnviarDatos(socket_cpu, buffer,strlen(buffer));
+	return 1;
+
+}
+
+int escribirCpu(char*ip, char*puerto,char* resultado){
+
+
+	int socket_cpu;
+	if(!conectarConCpu(&socket_cpu, ip, puerto)){
+		//Error conexion
+		return 0;
+	}
+	//35+pid
+	char* buffer = string_new();
+	string_append(&buffer,"36");
+	string_append(&buffer,resultado);
+	EnviarDatos(socket_cpu, buffer,strlen(buffer));
+	return 1;
+
+}
+
+int leerCpu(char*ip, char*puerto,char*pagina,char* contenido){
+
+
+	int socket_cpu;
+	if(!conectarConCpu(&socket_cpu, ip, puerto)){
+		//Error conexion
+		return 0;
+	}
+	//35+pid
+	char* buffer = string_new();
+	string_append(&buffer,"35");
+	string_append(&buffer,obtenerSubBuffer(pagina));
+	string_append(&buffer,obtenerSubBuffer(contenido));
+	EnviarDatos(socket_cpu, buffer,strlen(buffer));
+	return 1;
+
+}
+
+int leerCpuError(char*ip, char*puerto){
+
+
+	int socket_cpu;
+	if(!conectarConCpu(&socket_cpu, ip, puerto)){
+		//Error conexion
+		return 0;
+	}
+	//35+pid
+	char* buffer = string_new();
+	string_append(&buffer,"35");
+	string_append(&buffer,0);
+	EnviarDatos(socket_cpu, buffer,strlen(buffer));
+	return 1;
+
+}
+
+int conectarConCpu(int *socket_cpu, char*ip, char*puerto){
+	//Conecto a la memoria principal
+	//ESTRUCTURA DE SOCKETS; EN ESTE CASO CONECTA CON NODO
+		//log_info(logger, "Intentando conectar a nodo\n");
+		//conectar con Nodo
+		struct addrinfo hints;
+		struct addrinfo *serverInfo;
+		int conexionOk = 0;
+
+		memset(&hints, 0, sizeof(hints));
+		hints.ai_family = AF_UNSPEC;// Permite que la maquina se encargue de verificar si usamos IPv4 o IPv6
+		hints.ai_socktype = SOCK_STREAM;	// Indica que usaremos el protocolo TCP
+
+
+		if (getaddrinfo(ip, puerto, &hints, &serverInfo) != 0) {// Carga en serverInfo los datos de la conexion
+			log_info(logger,
+					"ERROR: cargando datos de conexion socket_memoria");
+		}
+
+		if ((*socket_cpu = socket(serverInfo->ai_family, serverInfo->ai_socktype,
+				serverInfo->ai_protocol)) < 0) {
+			log_info(logger, "ERROR: crear socket_memoria");
+		}
+		if (connect(*socket_cpu, serverInfo->ai_addr, serverInfo->ai_addrlen)
+				< 0) {
+			log_info(logger, "ERROR: conectar socket_memoria");
+		} else {
+			conexionOk = 1;
+		}
+		freeaddrinfo(serverInfo);	// No lo necesitamos mas
+		return conexionOk;
+}
+
+t_cpu* buscarCPUporPid(int pid) {
+	t_cpu* la_cpu = malloc(sizeof(t_cpu));
+	bool _true(void *elem) {
+		return (((t_cpu*) elem)->procesoActivo == pid);
+	}
+	la_cpu = list_find(lista_cpu, _true);
+	return la_cpu;
+}
+
+t_cpu* buscarCPUporPuerto(char* puerto) {
+	t_cpu* la_cpu = malloc(sizeof(t_cpu));
+	bool _true(void *elem) {
+		return (!strcmp(((t_cpu*) elem)->puerto, puerto));
+	}
+	la_cpu = list_find(lista_cpu, _true);
+	return la_cpu;
 }
 //t_tlb* crearTLB(int cant_entradas){
 	//t_tlb TLB;
