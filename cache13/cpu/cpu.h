@@ -39,18 +39,41 @@ int g_Cant_Hilos;
 int g_Retardo;
 int g_Ejecutando = 1;						// - Bandera que controla la ejecución o no del programa. Si está en 0 el programa se cierra.
 int g_Puerto_CPU = 4500;
-static __thread int puerto;
-__thread char* resultado; //Resultado de las instrucciones
-// pthread_t hOrquestadorConexiones; 			//Hilo de conexion
 
-#define BUFFERSIZE 200
+static __thread int puerto;
 
 //Estructura para pasarle a AtiendeCliente para que reconzca el puerto.
 struct struct_atiende {
     int socket;
     int puertoCpu;
-    pthread_mutex_t* sInstruccion;
 }args;
+
+typedef struct{
+int puerto;
+int pidGlobal;
+int instrucRealizadasGlobal;
+char* resultado; //Resultado de las instrucciones
+sem_t sProxInstruccion;
+}t_global;
+
+t_global *global_create(int puerto) {
+	t_global *new = malloc(sizeof(t_global));
+	new->puerto = puerto;
+	new->pidGlobal = 0;
+	new->instrucRealizadasGlobal = 0;
+	new->resultado = string_new();
+	sem_init(&(new->sProxInstruccion),0,1);
+	return new;
+}
+
+t_list* lista_global;
+
+void global_destroy(t_global* self) {
+	free(self);
+}
+// pthread_t hOrquestadorConexiones; 			//Hilo de conexion
+
+#define BUFFERSIZE 200
 
 // TIPOS //
 typedef enum {
@@ -76,6 +99,7 @@ int cuentaDigitos(int valor);
 int ObtenerTamanio (char *buffer , int posicion, int dig_tamanio);
 int AtiendeCliente(void * arg);
 void HiloOrquestadorDeConexiones(int puerto);
+void crearEscucha();
 void iniciarCpu(void* arg);
 void CerrarSocket(int socket);
 int ObtenerComandoMSJ(char* buffer);
@@ -91,4 +115,5 @@ int leer(int paginas, int pid);
 int escribir(int paginas,char* texto,int pid);
 int entradaSalida(int tiempo,int pid);
 int finalizar(int pid);
-
+int finalizarPlanificador();
+t_global* buscarGlobalPorPuerto(int puerto);
