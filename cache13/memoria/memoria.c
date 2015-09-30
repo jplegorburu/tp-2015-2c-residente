@@ -505,7 +505,7 @@ int EnviarDatos(int socket, char *buffer, int cantidadDeBytesAEnviar) {
 	if ((bytecount = send(socket, buffer, cantidadDeBytesAEnviar, 0)) == -1)
 		log_info(logger,"No puedo enviar información a al clientes. Socket: %d", socket);
 	//printf("Cuanto Envie:%d\n",bytecount);
-	//Traza("ENVIO datos. socket: %d. buffer: %s", socket, (char*) buffer);
+	//printf("ENVIO datos. socket: %d. buffer: %s", socket, (char*) buffer);
 
 	//char * bufferLogueo = malloc(5);
 	//bufferLogueo[cantidadDeBytesAEnviar] = '\0';
@@ -871,7 +871,7 @@ int leerCpu(char*ip, char*puerto,char*pagina,char* contenido){
 	}
 	//35+pid
 	char* buffer = string_new();
-	string_append(&buffer,"35");
+	string_append(&buffer,"38");
 	string_append(&buffer,obtenerSubBuffer(pagina));
 	string_append(&buffer,obtenerSubBuffer(contenido));
 	EnviarDatos(socket_cpu, buffer,strlen(buffer));

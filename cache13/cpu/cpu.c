@@ -573,11 +573,7 @@ int AtiendeCliente(void * arg) {
 									}
 									else{
 										printf("Lectura realizada\n"); //Grabar Texto
-										t_global* la_global = buscarGlobalPorPuerto(puerto);
-
-										string_append(&(la_global->resultado),obtenerSubBuffer("2"));
-										string_append(&(la_global->resultado),obtenerSubBuffer("1"));//Cant Paginas
-										string_append(&(la_global->resultado),obtenerSubBuffer("1"));//mensaje
+										leerPlanificador(buffer);
 									}
 									break;
 								case 9:
@@ -586,7 +582,7 @@ int AtiendeCliente(void * arg) {
 										string_append(&(la_global->resultado),obtenerSubBuffer("5"));
 										printf("RESULTADO PARCIAL2: %s\n", la_global->resultado);
 
-										if(finalizarPlanificador()==0){
+										if(finalizarPlanificador()==-1){
 											printf("ERROR no pudo enviar resultado\n");
 										}
 										//Crear funcion para enviar a Planificador;
@@ -776,6 +772,9 @@ int finalizarPlanificador(){
 	string_append(&buffer,obtenerSubBuffer(string_itoa(la_global->instrucRealizadasGlobal)));
 	string_append(&buffer,obtenerSubBuffer(la_global->resultado));
 	printf("\n HOLA %s\n",buffer);
+	la_global->instrucRealizadasGlobal=0;
+	//free(la_global->resultado);
+	la_global->resultado=string_new();
 	return EnviarDatos(socket_Plani, buffer,strlen(buffer));
 }
 
@@ -869,4 +868,42 @@ t_global* buscarGlobalPorPuerto(int puerto) {
 	}
 	la_cpu = list_find(lista_global, _true);
 	return la_cpu;
+}
+
+int leerPlanificador(char* buffer) {
+
+	char *pagina, *contenido,*armarResultado;
+	armarResultado=string_new();
+	int posActual = 2;
+	t_global* la_global = buscarGlobalPorPuerto(puerto);
+	pagina = DigitosNombreArchivo(buffer, &posActual);
+	//printf("Ip:%s\n",la_Ip);
+	contenido = DigitosNombreArchivo(buffer, &posActual);
+	//printf("Puerto:%s\n",el_Puerto);
+	string_append(&armarResultado,"2");
+	string_append(&armarResultado,obtenerSubBuffer(pagina));
+	string_append(&armarResultado,obtenerSubBuffer(contenido));
+	string_append(&(la_global->resultado),obtenerSubBuffer(armarResultado));
+
+	free(armarResultado);
+	return 1;
+}
+
+char* DigitosNombreArchivo(char *buffer, int *posicion) {
+
+	char *nombreArch;
+	int digito = 0, i = 0, j = 0, algo = 0, aux = 0, x = 0;
+	digito = PosicionDeBufferAInt(buffer, *posicion);
+	for (i = 1; i <= digito; i++) {
+		algo = PosicionDeBufferAInt(buffer, *posicion + i);
+		aux = aux * 10 + algo;
+	}
+	nombreArch = malloc(aux + 1);
+	for (j = *posicion + i; j < *posicion + i + aux; j++) {
+		nombreArch[x] = buffer[j];
+		x++;
+	}
+	nombreArch[x] = '\0';
+	*posicion = *posicion + i + aux;
+	return nombreArch;
 }

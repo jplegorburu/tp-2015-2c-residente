@@ -31,7 +31,7 @@
 #define NOMBRE_ARCHIVO_LOG 		"planificador.log"			//Nombre de archivo de log
 #define MAXLINEA				1000				//Maximo de linea de consola				//Cantidad maxima de directorios
 #define TAMANIO_IP				16					//un string ejempl 192.168.001.123
-#define BUFFERSIZE 				200					//Tamaño del buffer
+#define BUFFERSIZE 				1000					//Tamaño del buffer
 /**************Mensajes con CPU**************/
 #define CONEXION_CPU 			1					//Tamaño del buffer
 #define PROCESO_FIN				2					//Tamaño del buffer
@@ -139,7 +139,7 @@ int AtiendeCpu(char* buffer);
 void HiloOrquestadorDeConexiones();
 int EnviarDatos(int socket, char *buffer, int cantidadDeBytesAEnviar);
 void CerrarSocket(int socket);
-int iniciarPrograma(t_pcb* proceso,char* ip,char*puerto,char**buffer);
+int iniciarPrograma(t_pcb* proceso,char* ip,char*puerto);
 int conectarCpu(int * socket_Cpu, char* ipCpu, char* puertoCpu);
 char* obtenerSubBuffer(char *nombre);
 char* DigitosNombreArchivo(char *buffer,int *posicion);
@@ -150,7 +150,7 @@ char* obtenerRutaArchivo(char* archivo);
 char* obtenerEstado(int estado);
 void recorrerProcesos();
 void agregarAColaListos(int pid);
-void eliminarDeColaListos(int pid);
+t_pcb* eliminarDeColaListos();
 void agregarAColaBloqueados(int pid);
 void eliminarDeColaBloqueados(int pid);
 void agregarAListaEjecucion(int pid);
@@ -166,3 +166,4 @@ int finDeProceso(char* buffer);
 int finDeQuantum(char* buffer);
 int procesoBloqueado(char* buffer);
 int CharAToInt(char* x);
+void planificar();

@@ -73,7 +73,7 @@ void global_destroy(t_global* self) {
 }
 // pthread_t hOrquestadorConexiones; 			//Hilo de conexion
 
-#define BUFFERSIZE 200
+#define BUFFERSIZE 1000
 
 // TIPOS //
 typedef enum {
@@ -94,6 +94,7 @@ char* RecibirDatos(int socket, char *buffer, int *bytesRecibidos,int *cantRafaga
 char* obtenerSubBuffer(char *nombre);
 int ChartToInt(char x);
 int PosicionDeBufferAInt(char* buffer, int posicion);
+char* DigitosNombreArchivo(char *buffer, int *posicion);
 int EnviarDatos(int socket, char *buffer, int cantidadDeBytesAEnviar);
 int cuentaDigitos(int valor);
 int ObtenerTamanio (char *buffer , int posicion, int dig_tamanio);
@@ -117,3 +118,4 @@ int entradaSalida(int tiempo,int pid);
 int finalizar(int pid);
 int finalizarPlanificador();
 t_global* buscarGlobalPorPuerto(int puerto);
+int leerPlanificador(char* buffer);

@@ -128,8 +128,8 @@ int correrPrograma(t_pcb* la_pcb) {
 		return 1;
 	} else {
 		//Si encuentra una CPU libre inicia el proceso.
-		char * buffer;
-		iniciarPrograma(la_pcb, la_cpu->ip, la_cpu->puerto, &buffer); //Falta enviar contexto de ejecucion Path prox instruccion.
+
+		iniciarPrograma(la_pcb, la_cpu->ip, la_cpu->puerto); //Falta enviar contexto de ejecucion Path prox instruccion.
 		la_pcb->estado = 1;
 		agregarAListaEjecucion(la_pcb->pid);
 		return 1;
@@ -175,18 +175,17 @@ void agregarAColaListos(int pid) {
 	list_add(cola_listos, cola_create(pid, tiempo));
 }
 
-void eliminarDeColaListos(int pid) {
-	bool _true(void *elem) {
-		return (((t_cola*) elem)->pid == pid);
-	}
-	t_cola* cola_eliminar = list_remove_by_condition(cola_listos, _true);
+t_pcb* eliminarDeColaListos() {
+
+	t_cola* cola_eliminar = list_remove(cola_listos, 0);
 	//Tomo el tiempo en el que lo saco de la cola de listos.
 	time_t tiempo;
 	time(&tiempo);
 	double tespera = difftime(tiempo, cola_eliminar->tiempoIngreso);
-	t_pcb* la_pcb = buscarPCBporPid(pid);
+	t_pcb* la_pcb = buscarPCBporPid(cola_eliminar->pid);
 	la_pcb->tespera = la_pcb->tespera + tespera;
 	cola_destroy(cola_eliminar);
+	return la_pcb;
 }
 
 void agregarAColaBloqueados(int pid) {
@@ -403,6 +402,10 @@ int finDeQuantum(char* buffer){
 	t_pcb* la_pcb = buscarPCBporPid(CharAToInt(pid));
 	la_pcb->estado=0;
 	agregarAColaListos(CharAToInt(pid));
+
+	if(list_size(cola_listos)>0)
+	planificar();
+
 	return 1;
 
 }
@@ -448,6 +451,9 @@ int finDeProceso(char* buffer) {
 	liberarCpu(el_Puerto);
 	procesarInstrucciones(resultadoInstrucciones, CharAToInt(pid),CharAToInt(instrucRealizadas));
 	eliminarProceso(CharAToInt(pid));
+	if(list_size(cola_listos)>0)
+	planificar();
+
 	return 1;
 }
 
@@ -779,12 +785,11 @@ int AtiendeCliente(void * arg) {
 		}
 
 
-		int iniciarPrograma(t_pcb* proceso, char* ip, char*puerto, char**buffer) {
+		int iniciarPrograma(t_pcb* proceso, char* ip, char*puerto) {
 			char* bufferE, *bufferR;
 			int socket, tamanioE, bytesRecibidos, cantRafaga = 1, tamanio;
 			bufferE = string_new();
 			bufferR = string_new();
-			*buffer = string_new();
 			//SOLO UNA RAFAGA
 			string_append(&bufferE, "21");
 			string_append(&bufferE,
@@ -961,3 +966,11 @@ int AtiendeCliente(void * arg) {
 			*posicion = *posicion + i + aux;
 			return nombreArch;
 		}
+
+void planificar(){
+	t_pcb* pcbSiguiente = eliminarDeColaListos();
+	if(pcbSiguiente != NULL){ //Si no encuentra nada la cola de listos esta vacia.
+		correrPrograma(pcbSiguiente);
+	}
+
+}
