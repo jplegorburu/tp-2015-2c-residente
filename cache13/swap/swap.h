@@ -89,3 +89,6 @@ char* informarAgregarProceso(char* buffer);
 char* DigitosNombreArchivo(char *buffer, int *posicion);
 int CharAToInt(char* x);
 char* informarQuitarProceso(char* buffer);
+char* informarLecturaPagina(char* buffer);
+char* obtenerSubBuffer(char *nombre);
+char *leerPagina(int pid, int pagina);

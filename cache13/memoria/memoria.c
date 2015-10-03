@@ -290,6 +290,9 @@ int AtiendeCliente(void * arg) {
 
 		//Recibimos los datos del cliente
 		buffer = RecibirDatos(socket, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
+
+		printf("ESTOY RECIBIENDO ESTO: %s", buffer);
+
 		int error;
 		int funcion;
 		if (bytesRecibidos > 0) {
@@ -330,6 +333,7 @@ int AtiendeCliente(void * arg) {
 						   // switch con los distintos codigos de mensaje
 								switch (funcion){
 									case 1: //Inicio
+
 										resultadoInicioSwap(buffer);
 									break;
 
@@ -360,7 +364,7 @@ int AtiendeCliente(void * arg) {
 						break;
 						}
 			longitudBuffer=strlen(mensaje);
-			//printf("\nRespuesta: %s\n",buffer);
+			printf("\nRespuesta: %s\n",mensaje);
 			// Enviamos datos al cliente.
 			EnviarDatos(socket, mensaje,longitudBuffer);
 		} else
@@ -382,10 +386,12 @@ void finProcesoSwap(int pid){
 		string_append(&buffer,"35");
 		string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
 		EnviarDatos(socket_swap, buffer,strlen(buffer));
-
+		AtiendeCliente((void *)socket_swap);
 }
 
 void inicioProcesoSwap(int pid, int cant_pag){
+	//int bytesRecibidos;
+		//int cantRafaga=1,tamanio=0;
 
 		int socket_swap;
 		conectarConSwap(&socket_swap);
@@ -396,6 +402,10 @@ void inicioProcesoSwap(int pid, int cant_pag){
 		string_append(&buffer,obtenerSubBuffer(string_itoa(cant_pag)));
 		EnviarDatos(socket_swap, buffer,strlen(buffer));
 
+		AtiendeCliente((void *)socket_swap);
+		//buffer = RecibirDatos(socket_swap, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
+
+		//printf("ESTOY RECIBIENDO ESTO PRUEBA CROTA: %s", buffer);
 }
 
 void leerSwap(int pid, int num_pag){
@@ -408,7 +418,7 @@ void leerSwap(int pid, int num_pag){
 		string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
 		string_append(&buffer,obtenerSubBuffer(string_itoa(num_pag)));
 		EnviarDatos(socket_swap, buffer,strlen(buffer));
-
+		AtiendeCliente((void *)socket_swap);
 }
 
 void escribirSwap(int pid, int num_pag, char* contenido){
