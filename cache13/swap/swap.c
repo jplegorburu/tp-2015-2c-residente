@@ -9,7 +9,7 @@ int main(int argv, char** argc) {
 	listaOcupado = list_create();
 	listaLibre = list_create();
 
-		int test;
+		//int test;
 
 	// Levantamos el archivo de configuracion.
 	LevantarConfig();
@@ -18,9 +18,9 @@ int main(int argv, char** argc) {
 
 	iniciarlizarListas();
 
-	mostrarListaLibres();
 
-	test = agregarProceso(2,30);
+
+	/*test = agregarProceso(2,30);
 	mostrarListaLibres();
 	mostrarListaOcupados();
 
@@ -70,7 +70,7 @@ int main(int argv, char** argc) {
 
 	test = agregarProceso(11,30);
 	mostrarListaLibres();
-	mostrarListaOcupados();
+	mostrarListaOcupados();*/
 
 	escucharConexiones();
 
@@ -137,7 +137,7 @@ void quitarProceso(int pid){
 	free(libre);
 }
 
-//DEVUELVE 1 SI EL PROCESO SE PUDO INICIAR Y -1 SI SE RECHAZO POR FALTA DE ESPACIO EN SWAP
+//DEVUELVE 1 SI EL PROCESO SE PUDO INICIAR Y 0 SI SE RECHAZO POR FALTA DE ESPACIO EN SWAP
 int agregarProceso(int pid, int paginas){
 	int paginaDeInicio = hayLugarLibreSinCompactar(paginas);
 
@@ -154,9 +154,9 @@ int agregarProceso(int pid, int paginas){
 			agregarProcesoYActualizarListas(pid, paginaDeInicio, paginas);
 			printf("\nPROCESO %d AGREGADO! Paginas: %d\n", pid, paginas);
 		}else{
-			// -1 indica proceso rechazado
+			// 0 indica proceso rechazado
 			printf("\nPROCESO %d RECHAZADO! Paginas: %d\n", pid, paginas);
-			return -1;
+			return 0;
 		}
 	}
 	//INDICA QUE EL PROCESO SE INICIO
@@ -343,106 +343,200 @@ void crearArchivoParticionSwap(){
 	system(string_from_format("dd if=/dev/zero of=%s bs=%i count=%i", g_Arch_Swap, g_Tam_Pags,g_Cant_Pags));
 }
 
-	void escucharConexiones(){
+void escucharConexiones(){
 
-		int socket_host;
-		struct sockaddr_in client_addr;
-		struct sockaddr_in my_addr;
-		int yes = 1;
-		socklen_t size_addr = 0;
+	int socket_host;
+	struct sockaddr_in client_addr;
+	struct sockaddr_in my_addr;
+	int yes = 1;
+	socklen_t size_addr = 0;
 
-		socket_host = socket(AF_INET, SOCK_STREAM, 0);
-		if (socket_host == -1)
-			log_info(logger,
-					"No se pudo inicializar el socket que escucha a los clientes");
+	socket_host = socket(AF_INET, SOCK_STREAM, 0);
+	if (socket_host == -1)
+		log_info(logger,
+				"No se pudo inicializar el socket que escucha a los clientes");
 
-		if (setsockopt(socket_host, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int))
-				== -1) {
-			log_info(logger,"Error al hacer el 'setsockopt'");
-		}
+	if (setsockopt(socket_host, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int))
+			== -1) {
+		log_info(logger,"Error al hacer el 'setsockopt'");
+	}
 
-		my_addr.sin_family = AF_INET;
-		my_addr.sin_port = htons(g_Puerto_Swap);
-		my_addr.sin_addr.s_addr = htons(INADDR_ANY );
-		memset(&(my_addr.sin_zero), '\0', 8 * sizeof(char));
+	my_addr.sin_family = AF_INET;
+	my_addr.sin_port = htons(g_Puerto_Swap);
+	my_addr.sin_addr.s_addr = htons(INADDR_ANY );
+	memset(&(my_addr.sin_zero), '\0', 8 * sizeof(char));
 
-		if (bind(socket_host, (struct sockaddr*) &my_addr, sizeof(my_addr)) == -1)
-			log_info(logger,"Error al hacer el Bind. El puerto está en uso");
+	if (bind(socket_host, (struct sockaddr*) &my_addr, sizeof(my_addr)) == -1)
+		log_info(logger,"Error al hacer el Bind. El puerto está en uso");
 
-		if (listen(socket_host, 10) == -1) // el "10" es el tamaño de la cola de conexiones.
-			log_info(logger,
-					"Error al hacer el Listen. No se pudo escuchar en el puerto especificado");
-
-
-		int socket_client;
-
-				size_addr = sizeof(struct sockaddr_in);
-
-				socket_client = accept(socket_host,(struct sockaddr *) &client_addr, &size_addr);
+	if (listen(socket_host, 10) == -1) // el "10" es el tamaño de la cola de conexiones.
+		log_info(logger,
+				"Error al hacer el Listen. No se pudo escuchar en el puerto especificado");
 
 
-				printf("Memoria conectada\n");
+	int socket_client;
 
-				int longitudBuffer;
+	size_addr = sizeof(struct sockaddr_in);
 
-					// Es el encabezado del mensaje. Nos dice quien envia el mensaje
-						int emisor = 0;
-
-					// Dentro del buffer se guarda el mensaje recibido por el cliente.
-						char* buffer;
-						buffer = malloc(BUFFERSIZE * sizeof(char)); //-> de entrada lo instanciamos en 1 byte, el tamaño será dinamico y dependerá del tamaño del mensaje.
-
-					// Cantidad de bytes recibidos.
-						int bytesRecibidos;
-
-					// La variable fin se usa cuando el cliente quiere cerrar la conexion: chau chau!
-						int desconexionCliente = 0;
-
-					// Código de salida por defecto
-						int code = 0;
-						int cantRafaga=1,tamanio=0;
-						char * mensaje;
-						while ((!desconexionCliente) & g_Ejecutando) {
-							//	buffer = realloc(buffer, 1 * sizeof(char)); //-> de entrada lo instanciamos en 1 byte, el tamaño será dinamico y dependerá del tamaño del mensaje.
-							if (buffer != NULL )
-								free(buffer);
-							buffer = string_new();
-
-							if ((socket_client = accept(socket_host,(struct sockaddr *) &client_addr, &size_addr)) != -1) {
-								//Recibimos los datos del cliente
-															buffer = RecibirDatos(socket_client, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
+	//socket_client = accept(socket_host,(struct sockaddr *) &client_addr, &size_addr);
 
 
-															if (bytesRecibidos > 0) {
-																//Analisamos que peticion nos está haciendo (obtenemos el comando)
-																emisor = ObtenerComandoMSJ(buffer);
-																int funcion;
-																//Evaluamos los comandos
-																			switch (emisor) {
-																			case 3: //3 es memoria
+	//printf("Memoria conectada\n");
 
-																			funcion = ObtenerComandoMSJ(buffer+1);
-																		    if(funcion==2){
-																			printf("arrancando a correr programa\n");
-																							}
-																			mensaje="Ok";
-																			break;
-																			default:
-																				break;
-																			}
-																longitudBuffer=strlen(mensaje);
-																//printf("\nRespuesta: %s\n",buffer);
-																// Enviamos datos al cliente.
-																EnviarDatos(socket_client, mensaje,longitudBuffer);
-															} else
-																desconexionCliente = 1;
+	int longitudBuffer;
 
-														} else {
-										Error("ERROR AL ACEPTAR LA CONEXIÓN DE UN CLIENTE");
-									}
+// Es el encabezado del mensaje. Nos dice quien envia el mensaje
+	int emisor = 0;
+
+// Dentro del buffer se guarda el mensaje recibido por el cliente.
+	char* buffer;
+	buffer = malloc(BUFFERSIZE * sizeof(char)); //-> de entrada lo instanciamos en 1 byte, el tamaño será dinamico y dependerá del tamaño del mensaje.
+
+// Cantidad de bytes recibidos.
+	int bytesRecibidos;
+
+// La variable fin se usa cuando el cliente quiere cerrar la conexion: chau chau!
+	int desconexionCliente = 0;
+
+// Código de salida por defecto
+	int code = 0;
+	int cantRafaga=1,tamanio=0;
+	char * mensaje;
+
+	while ((!desconexionCliente) & g_Ejecutando) {
+		//	buffer = realloc(buffer, 1 * sizeof(char)); //-> de entrada lo instanciamos en 1 byte, el tamaño será dinamico y dependerá del tamaño del mensaje.
+		if (buffer != NULL )
+			free(buffer);
+		buffer = string_new();
+
+		if ((socket_client = accept(socket_host,(struct sockaddr *) &client_addr, &size_addr)) != -1) {
+			//Recibimos los datos del cliente
+			buffer = RecibirDatos(socket_client, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
+
+			if (bytesRecibidos > 0) {
+				//Analisamos que peticion nos está haciendo (obtenemos el comando)
+				emisor = ObtenerComandoMSJ(buffer);
+				int funcion;
+
+				//Evaluamos los comandos
+				switch (emisor) {
+
+					case 3: //3 es memoria
+
+						funcion = ObtenerComandoMSJ(buffer+1);
+						switch (funcion){
+							case 1:
+								//CONEXION CON SWAP
+								printf("Conexion con Memoria establecida\n");
+								mensaje = "OK";
+								//leerDatosDeConexion(buffer);
+							break;
+
+							case 2:
+								//INICIO DE PROCESO
+								mensaje = informarAgregarProceso(buffer);
+							break;
+
+							case 3:
+								//PEDIDO DE PAGINA
+							break;
+
+							case 4:
+								//ESCRIBIR PAGINA
+							break;
+
+							case 5:
+								//FINALIZAR PROCESO
+								mensaje = informarQuitarProceso(buffer);
+							break;
 						}
-							CerrarSocket(socket_client);
+				}
 
+				longitudBuffer=strlen(mensaje);
+				//printf("\nRespuesta: %s\n",buffer);
+				// Enviamos datos al cliente.
+				EnviarDatos(socket_client, mensaje,longitudBuffer);
+			} else
+				desconexionCliente = 1;
+
+			} else {
+				Error("ERROR AL ACEPTAR LA CONEXIÓN DE UN CLIENTE");
+			}
+	}
+
+	CerrarSocket(socket_client);
+
+}
+
+/*void leerDatosDeConexion(char* buffer){
+	int posActual = 0;
+	int digitosCantNumIp = 0, tamanioDeIp;
+
+	digitosCantNumIp = PosicionDeBufferAInt(buffer, 2);
+
+	tamanioDeIp = ObtenerTamanio(buffer, 3, digitosCantNumIp);
+
+	if (tamanioDeIp >= 10) {
+		posActual = digitosCantNumIp;
+	} else {
+		posActual = 1 + digitosCantNumIp;
+	}
+	//Chequeo el tamaño de la ip xq si es mas chica de 10 puede generar fallas.
+	ip_Memoria = DigitosNombreArchivo(buffer, &posActual);
+	printf("Ip:%s\n",ip_Memoria);
+	puerto_Memoria = DigitosNombreArchivo(buffer, &posActual);
+	printf("Puerto:%s\n",puerto_Memoria);
+}*/
+
+char* informarQuitarProceso(char* buffer){
+	char *pid;
+	int posActual = 2;
+
+	char *msg = string_new();
+
+	pid = DigitosNombreArchivo(buffer, &posActual);
+	printf("pid:%s\n", pid);
+
+	quitarProceso(CharAToInt(pid));
+	 // 44 + pid + resultado
+	string_append(&msg,"41");
+	string_append(&msg,pid);
+	string_append(&msg,string_itoa(1));
+
+	return msg;
+}
+
+char* informarAgregarProceso(char* buffer){
+	char *pid, *cantPaginas;
+	int posActual = 2;
+	int resultado;
+
+	char *msg = string_new();
+
+	pid = DigitosNombreArchivo(buffer, &posActual);
+	printf("pid:%s\n", pid);
+
+	cantPaginas = DigitosNombreArchivo(buffer, &posActual);
+	printf("Cantidad de paginas:%s\n", cantPaginas);
+
+	printf("Cantidad de paginas:%d\n", CharAToInt(cantPaginas));
+
+	resultado = agregarProceso(CharAToInt(pid), CharAToInt(cantPaginas));
+
+	//DEVUELVO 41 + pid + resultado
+	if(resultado==1){
+		printf("\nEL PROCESO %s SE INICIO\n", pid);
+	}else{
+		printf("\nEL PROCESO %s NO SE INICIO\n", pid);
+	}
+
+	mostrarListaLibres();
+
+	string_append(&msg,"41");
+	string_append(&msg,pid);
+	string_append(&msg,string_itoa(resultado));
+
+	return msg;
 
 }
 
@@ -556,11 +650,10 @@ int ChartToInt(char x) {
 int CharAToInt(char* x) {
 	int numero = 0;
 	char * aux = string_new();
-	string_append_with_format(&aux, "%c", x);
+	string_append_with_format(&aux, "%s", x);
 
 	numero = strtol(aux, (char **) NULL, 10);
-
-	if (aux != NULL )
+	if (aux != NULL)
 		free(aux);
 	return numero;
 }
@@ -590,6 +683,25 @@ int ObtenerComandoMSJ(char* buffer) {
 	return PosicionDeBufferAInt(buffer, 0);
 }
 
+char* DigitosNombreArchivo(char *buffer, int *posicion) {
+
+	char *nombreArch;
+	int digito = 0, i = 0, j = 0, algo = 0, aux = 0, x = 0;
+
+	digito = PosicionDeBufferAInt(buffer, *posicion);
+	for (i = 1; i <= digito; i++) {
+		algo = PosicionDeBufferAInt(buffer, *posicion + i);
+		aux = aux * 10 + algo;
+	}
+	nombreArch = malloc(aux + 1);
+	for (j = *posicion + i; j < *posicion + i + aux; j++) {
+		nombreArch[x] = buffer[j];
+		x++;
+	}
+	nombreArch[x] = '\0';
+	*posicion = *posicion + i + aux;
+	return nombreArch;
+}
 
 
 char* RecibirDatos(int socket, char *buffer, int *bytesRecibidos,int *cantRafaga,int *tamanio) {

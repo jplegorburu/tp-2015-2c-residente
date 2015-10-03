@@ -85,3 +85,7 @@ void agregarProcesoYActualizarListas(int pid, int inicio, int paginas);
 int agregarProceso(int pid, int paginas);
 void quitarProceso(int pid);
 void compactar();
+char* informarAgregarProceso(char* buffer);
+char* DigitosNombreArchivo(char *buffer, int *posicion);
+int CharAToInt(char* x);
+char* informarQuitarProceso(char* buffer);
