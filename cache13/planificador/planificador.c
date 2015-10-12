@@ -419,7 +419,7 @@ int procesoBloqueado(char* buffer){
 	pid = DigitosNombreArchivo(buffer, &posActual);
 	printf("PID:%s\n", pid);
 	tBloqueado = DigitosNombreArchivo(buffer, &posActual);
-	printf("TBloqueado:%s\n", pid);
+	printf("TBloqueado:%s\n", tBloqueado);
 	instrucRealizadas = DigitosNombreArchivo(buffer, &posActual);
 	printf("instrucRealizadas:%s\n", instrucRealizadas);
 	resultadoInstrucciones = DigitosNombreArchivo(buffer, &posActual);
@@ -483,18 +483,29 @@ void procesarInstrucciones(char* resultado, int pid,int cantInstrucciones) {
 				}
 			break;
 		case 2:			//Resultado Leer
+			if (ObtenerComandoMSJ(instruccion + 1)) {
 			numPagina = DigitosNombreArchivo(instruccion, &posActualAux);
 			contenido = DigitosNombreArchivo(instruccion, &posActualAux);
 			printf("mProc %d - Pagina %s leida: %s\n", pid, numPagina,
 					contenido);
 			posActualAux=1;
+			}else{
+				//Lectura Fallida
+				printf("mProc %d - Fallo al leer\n", pid);
+			}
+
 			break;
 		case 3:			//Resultado Escribir
+			if (ObtenerComandoMSJ(instruccion + 1)) {
 			numPagina = DigitosNombreArchivo(instruccion, &posActualAux);
 			contenido = DigitosNombreArchivo(instruccion, &posActualAux);
 			printf("mProc %d - Pagina %s escrita: %s\n", pid, numPagina,
 					contenido);
 			posActualAux=1;
+			}else{
+				//Escritura Fallida
+				printf("mProc %d - Fallo al escribir\n", pid);
+			}
 			break;
 		case 4:			//Resultado E/S
 			tBloq =DigitosNombreArchivo(instruccion, &posActualAux);

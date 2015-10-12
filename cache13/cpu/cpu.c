@@ -69,8 +69,6 @@ void conectarsePlanificador(int puertoCpu){
 	char*aux;
 
 	if( conectarPlanificador(&socket_Plani)){
-		printf("Conexion ok Planificador\n");
-
 		//ENVIO a PLANIFICADOR
 		//11210127.0.0.1143000 primer conexion, manda ip y puerto.
 		string_append(&buffer,"11");
@@ -80,6 +78,7 @@ void conectarsePlanificador(int puertoCpu){
 		string_append(&buffer,aux);
 
 		EnviarDatos(socket_Plani,buffer, strlen(buffer));
+		printf("Conexion ok Planificador.BUFFER: %s\n",buffer);
 		bufferR = RecibirDatos(socket_Plani,bufferR, &bytesRecibidos,&cantRafaga,&tamanio);
 
 		free(buffer);
@@ -98,8 +97,6 @@ void conectarseMemoria(int puertoCpu){
 	char*bufferE = string_new();
 	char*aux;
 	if(conectarMemoria(&socket_Memoria)){
-		printf("Conexion ok Memoria\n");
-
 				//ENVIO a MEMORIA
 				//11210127.0.0.1143000 primer conexion, manda ip y puerto.
 				string_append(&buffer,"11");
@@ -109,6 +106,7 @@ void conectarseMemoria(int puertoCpu){
 				string_append(&buffer,aux);
 
 				EnviarDatos(socket_Memoria,buffer, strlen(buffer));
+				printf("Conexion ok Memoria.BUFFER: %s\n",buffer);
 				bufferR = RecibirDatos(socket_Memoria,bufferR, &bytesRecibidos,&cantRafaga,&tamanio);
 
 				free(buffer);
@@ -162,7 +160,7 @@ int EnviarDatos(int socket, char *buffer, int cantidadDeBytesAEnviar) {
 
 	if ((bytecount = send(socket, buffer, cantidadDeBytesAEnviar, 0)) == -1)
 		Error("No puedo enviar información al cliente. Socket: %d", socket);
-	printf("EL BUFFER: %s\n",buffer);
+
 	return bytecount;
 }
 
@@ -506,19 +504,21 @@ int AtiendeCliente(void * arg) {
 		if (bytesRecibidos > 0) {
 			//Analisamos que peticion nos está haciendo (obtenemos el comando)
 			emisor = ObtenerComandoMSJ(buffer);
+
 			//Evaluamos los comandos
 						switch (emisor) {
 						case 2:
-
+							printf("\nCPU Buffer RECIBIDO: %s\n",buffer);
 							funcion = ObtenerComandoMSJ(buffer+1);
 							if(funcion==1){
-								printf("Funcion de Ejecucion\n");
-								printf("Buffer : %s\n",buffer);
-								printf("PID %d\n",obtenerPID(buffer));
-								printf("Direccion: %s\n",obtenerDireccion(buffer));
-								printf("Instruccion: %s\n",obtenerProximaInstruccion(buffer));
+								//printf("Funcion de Ejecucion\n");
+								//printf("Buffer : %s\n",buffer);
+								//printf("PID %d\n",obtenerPID(buffer));
+								//printf("Direccion: %s\n",obtenerDireccion(buffer));
+								//printf("Instruccion: %s\n",obtenerProximaInstruccion(buffer));
 								t_global* la_global = buscarGlobalPorPuerto(puerto);
 								la_global->pidGlobal=obtenerPID(buffer);
+
 								//Asigno el pid que se va a ejecutar a la lista global
 								abrirArchivo(obtenerDireccion(buffer),CharAToInt(obtenerProximaInstruccion(buffer)),obtenerPID(buffer));
 
@@ -531,79 +531,82 @@ int AtiendeCliente(void * arg) {
 							break;
 						case 3:
 							//Respuestas de la Memoria
+							printf("MEMORIA Buffer RECIBIDO: %s\n",buffer);
 							funcion = ObtenerComandoMSJ(buffer+1);
 							switch(funcion){
 								case 6:
-									if(ObtenerComandoMSJ(buffer+2)==0){
-										printf("ERROR! No se puede escribir \n");
+									if(ObtenerComandoMSJ(buffer+4)==0){
+										printf("ERROR!!!! No se puede escribir \n");
 										t_global* la_global = buscarGlobalPorPuerto(puerto);
-										string_append(&(la_global->resultado),"130");
+										(la_global->finError)=1;
+										string_append(&(la_global->resultado),obtenerSubBuffer("30"));
 									}
 										else
 										{
 											printf("Escritura realizada \n");
 											t_global* la_global = buscarGlobalPorPuerto(puerto);
-
-											string_append(&(la_global->resultado),"13");
-
+											string_append(&(la_global->resultado),obtenerSubBuffer("13"));
 										}
 
 									break;
 								case 7:
-									if(ObtenerComandoMSJ(buffer+2)==0){
-										printf("No se pudo iniciar el proceso\n");
-										t_global* la_global = buscarGlobalPorPuerto(puerto);
+									if(ObtenerComandoMSJ(buffer+4)==0){
+										printf("ERROR!!!! No se pudo iniciar el proceso\n");
 
-										string_append(&(la_global->resultado),"10");
+										t_global* la_global = buscarGlobalPorPuerto(puerto);
+										(la_global->finError)=1;
+										string_append(&(la_global->resultado),obtenerSubBuffer("10"));
 									}
 									else{
-										printf("Proceso Iniciado \n");
+										//printf("Proceso Iniciado \n");
 										t_global* la_global = buscarGlobalPorPuerto(puerto);
-
 										string_append(&(la_global->resultado),obtenerSubBuffer("11"));
-										printf("RESULTADO PARCIAL1: %s\n", la_global->resultado);
 									}
 									break;
 								case 8:
-									if(ObtenerComandoMSJ(buffer+2)==0){
-										printf("ERROR no pudo leer\n");
-										t_global* la_global = buscarGlobalPorPuerto(puerto);
+									if(ObtenerComandoMSJ(buffer+4)==0){
+										printf("ERROR!!!! no pudo leer\n");
 
-										string_append(&(la_global->resultado),"20");
+										t_global* la_global = buscarGlobalPorPuerto(puerto);
+										//(la_global->finError)=1;
+										string_append(&(la_global->resultado),obtenerSubBuffer("20"));
 									}
 									else{
-										printf("Lectura realizada\n"); //Grabar Texto
+										//printf("Lectura realizada\n");
 										leerPlanificador(buffer);
 									}
 									break;
 								case 9:
-									{	printf("Finalizacion\n"); //Grabar Texto
+									{	//printf("Finalizacion\n"); //Grabar Texto
 										t_global* la_global = buscarGlobalPorPuerto(puerto);
 										string_append(&(la_global->resultado),obtenerSubBuffer("5"));
-										printf("RESULTADO PARCIAL2: %s\n", la_global->resultado);
 
 										if(finalizarPlanificador()==-1){
-											printf("ERROR no pudo enviar resultado\n");
+											printf("ERROR!!!! no pudo enviar resultado\n");
 										}
-										//Crear funcion para enviar a Planificador;
+
 									}
 									break;
 								default:
 									break;
 								}
+
 							t_global* la_global = buscarGlobalPorPuerto(puerto);
 							sem_post(&(la_global->sProxInstruccion));
 							//Una vez que recibo la respuesta de memoria activo el semaforo para que siga con la siguiente intruccion.
+
 							mensaje="ok";
 
 						break;
 						default:
 							break;
 						}
+
 			longitudBuffer=strlen(mensaje);
-			//printf("\nRespuesta: %s\n",buffer);
+
 			// Enviamos datos al cliente.
 			EnviarDatos(socket, mensaje,longitudBuffer);
+
 		} else
 			desconexionCliente = 1;
 
@@ -623,14 +626,8 @@ if (archivoMcod == NULL) {
 	Error("Error al abrir el archivo");
 }
 int linea = 1;
-
-
-printf("EL PID VALE %d\n", pid);
-//string_append(&resultado,"12");
-//string_append(&resultado,obtenerSubBuffer(string_itoa(puerto)));
-//string_append(&resultado,obtenerSubBuffer(string_itoa(pid)));
-//printf("\n RESULTADO parcial: %s\n",resultado);
-
+int error =0;
+int fin =0;
 
 while ((getline(&line, &len, archivoMcod) != -1) && (linea!=instruccionAEjecutar)) {
 	linea++;
@@ -639,7 +636,10 @@ do{
 	t_global* la_global = buscarGlobalPorPuerto(puerto);
 	//Busco en la lista por puerto, y le resto uno al semaforo para que se bloquee esperando la respuesta de memoria
 	sem_wait(&(la_global->sProxInstruccion));
-	printf("VOLVI!\n");
+	la_global->instrucRealizadasGlobal++;
+	printf("\nNro Inst: %d. RESULTADO PARCIAL: %s\n",la_global->instrucRealizadasGlobal, la_global->resultado);
+
+
 //Le saco el \n final a la linea ingresada
 char **sinBarraN = string_split(line, "\n");
 //Separo el comando y su campo ingresado en caso que tenga.
@@ -647,8 +647,7 @@ char **sinBarraPunto = string_split(sinBarraN[0], ";");
 char **comando = string_split(sinBarraPunto[0], " ");
 char **comando2 = string_split(sinBarraN[0], "\"");
 
-
-
+printf("\nIntruccion: %s\n",comando[0]);
 if (strcmp(comando[0], "iniciar") == 0) {
 	if(iniciar(CharAToInt(comando[1]),pid)==-1)
 		printf("Error, no se pudo iniciar");
@@ -677,14 +676,20 @@ if (strcmp(comando[0], "entrada-salida") == 0) {
 }
 
 if (strcmp(comando[0], "finalizar") == 0) {
+	printf("\n\nFinalizar\n\n");
+	fin = 1;
 	if(finalizar(pid)==-1)
 		printf("Error, no se pudo leer");
 
 	sleep(g_Retardo);
 }
-la_global->instrucRealizadasGlobal++;
-printf("INSTRUCCIONES REALIZADAS %d\n",la_global->instrucRealizadasGlobal);
-}while((getline(&line, &len, archivoMcod) != -1) ); //agregar quantum
+
+error = (la_global->finError);
+}while((getline(&line, &len, archivoMcod) != -1) && (error==0)&& (fin==0)); //Fin de archivo, Error, o Finalizado. agregar quantum
+
+if(error==1){
+	finalizarPlanificador();
+}
 
 
 fclose(archivoMcod);
@@ -699,9 +704,10 @@ int iniciar(int paginas, int pid){
 	//13+puerto+pid+paginas
 	char* buffer = string_new();
 	string_append(&buffer,"13");
-	string_append(&buffer,obtenerSubBuffer(string_itoa(puerto))); //VER TEMA DEL PUERTO!!!
+	string_append(&buffer,obtenerSubBuffer(string_itoa(puerto)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(paginas)));
+	printf("(iniciar) ENVIADO a MEMORIA: %s\n",buffer);
 	return EnviarDatos(socket_memoria, buffer,strlen(buffer));
 }
 
@@ -712,10 +718,10 @@ int leer(int paginas, int pid){
 	//14+puerto+pid+pagina
 	char* buffer = string_new();
 	string_append(&buffer,"14");
-	string_append(&buffer,obtenerSubBuffer(string_itoa(puerto))); //VER TEMA DEL PUERTO!!!
+	string_append(&buffer,obtenerSubBuffer(string_itoa(puerto)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(paginas)));
-	printf("\n buffer %s\n",buffer);
+	printf("(leer) ENVIADO a MEMORIA: %s\n",buffer);
 	return EnviarDatos(socket_memoria, buffer,strlen(buffer));
 }
 
@@ -729,7 +735,7 @@ int escribir(int paginas,char* texto,int pid){
 	string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(paginas)));
 	string_append(&buffer,obtenerSubBuffer(texto));
-	printf("\n buffer %s\n",buffer);
+	printf("(escribir) ENVIADO a MEMORIA: %s\n",buffer);
 	return EnviarDatos(socket_memoria, buffer,strlen(buffer));
 }
 
@@ -738,24 +744,30 @@ int entradaSalida(int tiempo,int pid){
 	conectarPlanificador(&socket_Plani);
 	//13+puerto+pid+TiempoBloqueado+CantIntrucciones+Resultados
 	char* buffer = string_new();
+	t_global* la_global = buscarGlobalPorPuerto(puerto);
+
 	string_append(&buffer,"13");
 	string_append(&buffer,obtenerSubBuffer(string_itoa(puerto)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(tiempo)));
-	printf("\n buffer %s\n",buffer);
+	string_append(&buffer,obtenerSubBuffer(string_itoa(la_global->instrucRealizadasGlobal)));
+	string_append(&buffer,obtenerSubBuffer(la_global->resultado));
+	printf("(Ent-Sal) ENVIADO a PLANIFICADOR: %s\n",buffer);
+
+	//AGREGAR RESULTADO PARCIAL
 	return EnviarDatos(socket_Plani, buffer,strlen(buffer));
 }
 
 int finalizar(int pid){
-	printf("SOY EL PUERTO:%d",puerto);
+	//printf("SOY EL PUERTO:%d",puerto);
 	int socket_Memoria;
 	conectarMemoria(&socket_Memoria);
-	//12+puerto+pid+CantIntruccionesRealizadas+Resultados
+	//12+puerto+pid
 	char* buffer = string_new();
 	string_append(&buffer,"12");
 	string_append(&buffer,obtenerSubBuffer(string_itoa(puerto)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
-	printf("\n buffer %s\n",buffer);
+	printf("(Fin) ENVIADO a MEMORIA: %s\n",buffer);
 	return EnviarDatos(socket_Memoria, buffer,strlen(buffer));
 }
 
@@ -771,10 +783,12 @@ int finalizarPlanificador(){
 	string_append(&buffer,obtenerSubBuffer(string_itoa(la_global->pidGlobal)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(la_global->instrucRealizadasGlobal)));
 	string_append(&buffer,obtenerSubBuffer(la_global->resultado));
-	printf("\n HOLA %s\n",buffer);
+
 	la_global->instrucRealizadasGlobal=0;
+	la_global->finError =0;
 	//free(la_global->resultado);
 	la_global->resultado=string_new();
+	printf("(FIN) ENVIADO a PLANIFICADOR: %s\n",buffer);
 	return EnviarDatos(socket_Plani, buffer,strlen(buffer));
 }
 

@@ -39,7 +39,6 @@ int g_Cant_Hilos;
 int g_Retardo;
 int g_Ejecutando = 1;						// - Bandera que controla la ejecución o no del programa. Si está en 0 el programa se cierra.
 int g_Puerto_CPU = 4500;
-
 static __thread int puerto;
 
 //Estructura para pasarle a AtiendeCliente para que reconzca el puerto.
@@ -52,6 +51,7 @@ typedef struct{
 int puerto;
 int pidGlobal;
 int instrucRealizadasGlobal;
+int finError;
 char* resultado; //Resultado de las instrucciones
 sem_t sProxInstruccion;
 }t_global;
@@ -62,6 +62,7 @@ t_global *global_create(int puerto) {
 	new->pidGlobal = 0;
 	new->instrucRealizadasGlobal = 0;
 	new->resultado = string_new();
+	new->finError =0;
 	sem_init(&(new->sProxInstruccion),0,1);
 	return new;
 }
