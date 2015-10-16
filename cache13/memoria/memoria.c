@@ -3,7 +3,7 @@
 int main(int argv, char** argc) {
 
 	//int iThreadOrquestador;
-
+	sem_init(&sem_swap,0,1); //semaforo para conectarse con swap
 	lista_cpu=list_create();  //Creo la lista de las cpu.
 	//Archivo de Log
 	logger = log_create(NOMBRE_ARCHIVO_LOG, "memoria", true, LOG_LEVEL_TRACE);
@@ -19,6 +19,7 @@ int main(int argv, char** argc) {
 	}
 
 	HiloOrquestadorDeConexiones();
+
 	//Hilo orquestador conexiones para escuchar
 	//	if ((iThreadOrquestador = pthread_create(&hOrquestadorConexiones, NULL, (void*) HiloOrquestadorDeConexiones, NULL )) != 0){
 		//	fprintf(stderr, (char *)NosePuedeCrearHilo, iThreadOrquestador);
@@ -328,7 +329,7 @@ int AtiendeCliente(void * arg) {
 
 						break;
 
-						case 4: //PARA LOS MSJs que manda SWAP
+						case 4: //PARA LOS MSJs que manda SWAP // TODO:pasarlo adentro de los case de arriba
 							funcion = ObtenerComandoMSJ(buffer+1);
 						   // switch con los distintos codigos de mensaje
 								switch (funcion){
@@ -386,7 +387,11 @@ void finProcesoSwap(int pid){
 		string_append(&buffer,"35");
 		string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
 		EnviarDatos(socket_swap, buffer,strlen(buffer));
-		AtiendeCliente((void *)socket_swap);
+
+		int bytesRecibidos;
+		int cantRafaga = 1, tamanio = 0;
+		buffer = RecibirDatos(socket_swap, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
+
 }
 
 void inicioProcesoSwap(int pid, int cant_pag){
@@ -402,10 +407,12 @@ void inicioProcesoSwap(int pid, int cant_pag){
 		string_append(&buffer,obtenerSubBuffer(string_itoa(cant_pag)));
 		EnviarDatos(socket_swap, buffer,strlen(buffer));
 
-		AtiendeCliente((void *)socket_swap);
-		//buffer = RecibirDatos(socket_swap, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
+		int bytesRecibidos;
+		int cantRafaga = 1, tamanio = 0;
+		//AtiendeCliente((void *)socket_swap);
+		buffer = RecibirDatos(socket_swap, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
+		printf("ESTOY RECIBIENDO ESTO PRUEBA CROTA: %s", buffer);
 
-		//printf("ESTOY RECIBIENDO ESTO PRUEBA CROTA: %s", buffer);
 }
 
 void leerSwap(int pid, int num_pag){
@@ -418,7 +425,12 @@ void leerSwap(int pid, int num_pag){
 		string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
 		string_append(&buffer,obtenerSubBuffer(string_itoa(num_pag)));
 		EnviarDatos(socket_swap, buffer,strlen(buffer));
-		AtiendeCliente((void *)socket_swap);
+		//AtiendeCliente((void *)socket_swap);
+
+		int bytesRecibidos;
+		int cantRafaga = 1, tamanio = 0;
+		buffer = RecibirDatos(socket_swap, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
+
 }
 
 void escribirSwap(int pid, int num_pag, char* contenido){
@@ -433,10 +445,13 @@ void escribirSwap(int pid, int num_pag, char* contenido){
 		string_append(&buffer,obtenerSubBuffer(contenido));
 		EnviarDatos(socket_swap, buffer,strlen(buffer));
 
+		int bytesRecibidos;
+		int cantRafaga = 1, tamanio = 0;
+		buffer = RecibirDatos(socket_swap, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
 }
 
 void ConectarseConSwap(int g_Puerto_Memoria){
-	int socket_swap;
+
 
 	//int bytesRecibidos,cantRafaga=1,tamanio;
 	char*buffer = string_new();
@@ -575,7 +590,11 @@ void informarFinDelProceso(char* buffer){
 	//Busco la CPU por el puerto
 	la_cpu->procesoActivo=CharAToInt(pid);
 	//Le agreguo el proceso activo correspondiente.
+	sem_wait(&sem_swap);
 	finProcesoSwap(CharAToInt(pid));
+	sem_post(&sem_swap);
+
+
 }
 
 void informarInicio(char* buffer){
@@ -599,7 +618,10 @@ void informarInicio(char* buffer){
 	la_cpu->procesoActivo=CharAToInt(pid);
 	//Le agreguo el proceso activo correspondiente.
 
+	sem_wait(&sem_swap);
 	inicioProcesoSwap(CharAToInt(pid),CharAToInt(cant_pag));
+	sem_post(&sem_swap);
+
 }
 
 void informarLeer(char* buffer){
@@ -622,8 +644,9 @@ void informarLeer(char* buffer){
 	//Busco la CPU por el puerto
 	la_cpu->procesoActivo=CharAToInt(pid);
 	//Le agreguo el proceso activo correspondiente.
-
+	sem_wait(&sem_swap);
 	leerSwap(CharAToInt(pid), CharAToInt(num_pag));
+	sem_post(&sem_swap);
 }
 
 void informarEscribir(char* buffer){
@@ -649,9 +672,9 @@ void informarEscribir(char* buffer){
 	//Busco la CPU por el puerto
 	la_cpu->procesoActivo=CharAToInt(pid);
 	//Le agreguo el proceso activo correspondiente.
-
+	sem_wait(&sem_swap);
 	escribirSwap(CharAToInt(pid),CharAToInt(num_pag),contenido);
-
+	sem_post(&sem_swap);
 }
 
 
@@ -776,7 +799,7 @@ void resultadoLecturaSwap(char* buffer){
 	if(!strcmp(error,"0")){
 	//Busco la CPU en la lista donde se esta ejecutando el proceso.
 	t_cpu* la_cpu = buscarCPUporPid(CharAToInt(pid));
-	leerCpuError(la_cpu->procesoActivo,la_cpu->ip,la_cpu->puerto);
+	leerCpuError(la_cpu->ip,la_cpu->puerto);
 	}
 	else
 	{

@@ -48,6 +48,7 @@ int g_Ejecutando = 1;						// - Bandera que controla la ejecución o no del prog
 t_list* lista_cpu; 							//Lista de Cpus conectadas.
 #define BUFFERSIZE 200
 pthread_t hOrquestadorConexiones;
+int socket_swap;
 
 typedef struct {
 	char * ip;
@@ -83,6 +84,9 @@ typedef struct {
 
 } t_tlb;
 
+
+sem_t sem_swap;
+int leerCpuError(char*ip, char*puerto);
 int conectarConSwap(int *socket_swap);
 void ConectarseConSwap(int g_puerto_memoria);
 void LevantarConfig();
