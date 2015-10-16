@@ -628,7 +628,7 @@ if (archivoMcod == NULL) {
 int linea = 1;
 int error =0;
 int fin =0;
-
+int ent_sal=0;
 while ((getline(&line, &len, archivoMcod) != -1) && (linea!=instruccionAEjecutar)) {
 	linea++;
 }
@@ -671,7 +671,7 @@ if (strcmp(comando[0], "escribir") == 0) {
 if (strcmp(comando[0], "entrada-salida") == 0) {
 	if(entradaSalida(CharAToInt(comando[1]),pid)==-1)
 		printf("Error, no se pudo leer");
-
+	ent_sal=1;
 	sleep(g_Retardo);
 }
 
@@ -685,16 +685,24 @@ if (strcmp(comando[0], "finalizar") == 0) {
 }
 
 error = (la_global->finError);
-}while((getline(&line, &len, archivoMcod) != -1) && (error==0)&& (fin==0)); //Fin de archivo, Error, o Finalizado. agregar quantum
+}while((getline(&line, &len, archivoMcod) != -1) && (error==0)&& (fin==0) && (ent_sal==0)); //Fin de archivo, Error, o Finalizado. agregar quantum
 
 if(error==1){
 	finalizarPlanificador();
 }
-
+if(ent_sal==1){
+	//enviar msj a memoria para avisar que termine la rafaga a memoria
+	finRafaga(pid);
+}
 
 fclose(archivoMcod);
 
 
+}
+
+int finRafaga(pid){
+	printf("\n\n !!!!se utiliza la funcion finalizar momentaneamente!!! \n\n");
+	return finalizar(pid); //momentaneamnete usamos esta funcion. ojo, el PID no debe terminar en memoria.
 }
 
 int iniciar(int paginas, int pid){
@@ -753,6 +761,11 @@ int entradaSalida(int tiempo,int pid){
 	string_append(&buffer,obtenerSubBuffer(string_itoa(la_global->instrucRealizadasGlobal)));
 	string_append(&buffer,obtenerSubBuffer(la_global->resultado));
 	printf("(Ent-Sal) ENVIADO a PLANIFICADOR: %s\n",buffer);
+
+	//Reinicio las variables del hilo:
+	la_global->instrucRealizadasGlobal=0;
+	la_global->finError =0;
+	la_global->resultado=string_new();
 
 	//AGREGAR RESULTADO PARCIAL
 	return EnviarDatos(socket_Plani, buffer,strlen(buffer));
