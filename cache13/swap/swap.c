@@ -18,7 +18,7 @@ int main(int argv, char** argc) {
 
 	iniciarlizarListas();
 
-	int test;
+	/*int test;
 
 	test = agregarProceso(2,30);
 	mostrarListaLibres();
@@ -70,7 +70,7 @@ int main(int argv, char** argc) {
 
 	test = agregarProceso(11,30);
 	mostrarListaLibres();
-	mostrarListaOcupados();
+	mostrarListaOcupados();*/
 
 	escucharConexiones();
 
