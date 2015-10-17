@@ -9,7 +9,7 @@ int main(int argv, char** argc) {
 	listaOcupado = list_create();
 	listaLibre = list_create();
 
-		//int test;
+
 
 	// Levantamos el archivo de configuracion.
 	LevantarConfig();
@@ -18,9 +18,9 @@ int main(int argv, char** argc) {
 
 	iniciarlizarListas();
 
+	int test;
 
-
-	/*test = agregarProceso(2,30);
+	test = agregarProceso(2,30);
 	mostrarListaLibres();
 	mostrarListaOcupados();
 
@@ -70,13 +70,15 @@ int main(int argv, char** argc) {
 
 	test = agregarProceso(11,30);
 	mostrarListaLibres();
-	mostrarListaOcupados();*/
+	mostrarListaOcupados();
 
 	escucharConexiones();
+
 
 	return EXIT_SUCCESS;
 
 }
+
 
 void quitarProceso(int pid){
 
@@ -141,8 +143,7 @@ void quitarProceso(int pid){
 int agregarProceso(int pid, int paginas){
 	int paginaDeInicio = hayLugarLibreSinCompactar(paginas);
 
-	if(paginaDeInicio != 0){
-
+	if(paginaDeInicio != -1){
 		agregarProcesoYActualizarListas(pid, paginaDeInicio, paginas);
 		printf("\nPROCESO %d AGREGADO! Paginas: %d\n", pid, paginas);
 	}else{
@@ -253,7 +254,7 @@ bool hayLugarCompactando(int paginasNecesarias){
 	}
 }
 
-//Devuelve 0 si no hay lugares contiguos. Si hay, devuevle la pagina de inicio
+//Devuelve -1 si no hay lugares contiguos. Si hay, devuevle la pagina de inicio
 int hayLugarLibreSinCompactar(int paginasNecesarias){
 
 	bool _true(void *elem) {
@@ -264,7 +265,7 @@ int hayLugarLibreSinCompactar(int paginasNecesarias){
 	libre = list_find(listaLibre, _true);
 
 	if (libre==NULL){
-		return 0;
+		return -1;
 	}else{
 		return libre->paginaInicio;
 	}
@@ -334,7 +335,7 @@ void mostrarListaOcupados(){
 
 void iniciarlizarListas(){
 
-	list_add(listaLibre,crearElementoLibre(1,g_Cant_Pags));
+	list_add(listaLibre,crearElementoLibre(0,g_Cant_Pags-1));
 
 }
 
