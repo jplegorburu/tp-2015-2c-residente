@@ -377,15 +377,17 @@ void escucharConexiones(){
 	// La variable fin se usa cuando el cliente quiere cerrar la conexion: chau chau!
 		int desconexionCliente = 0;
 
-	//while(g_Ejecutando) {
-	while ((!desconexionCliente) & g_Ejecutando){
 		int socket_client;
 
-		size_addr = sizeof(struct sockaddr_in);
+	size_addr = sizeof(struct sockaddr_in);
 
-		//socket_client = accept(socket_host,(struct sockaddr *) &client_addr, &size_addr);
+	//socket_client = accept(socket_host,(struct sockaddr *) &client_addr, &size_addr);
 
-		if ((socket_client = accept(socket_host,(struct sockaddr *) &client_addr, &size_addr)) != -1) {
+	if ((socket_client = accept(socket_host,(struct sockaddr *) &client_addr, &size_addr)) != -1) {
+
+	//while(g_Ejecutando) {
+	while ((!desconexionCliente) & g_Ejecutando){
+
 		//printf("Memoria conectada\n");
 
 			int longitudBuffer;
@@ -459,14 +461,15 @@ void escucharConexiones(){
 							printf("\nRespuesta: %s\n",mensaje);
 							// Enviamos datos al cliente.
 							EnviarDatos(socket_client, mensaje,longitudBuffer);
-						} else
+						} else{
 							desconexionCliente = 1;
-						//}
-						CerrarSocket(socket_client);
-					} else {
-						Error("ERROR AL ACEPTAR LA CONEXIÓN DE UN CLIENTE");
+						}
 					}
-		}
+				} else {
+						Error("ERROR AL ACEPTAR LA CONEXIÓN DE UN CLIENTE");
+				}
+				CerrarSocket(socket_client);
+
 
 	CerrarSocket(socket_host);
 
