@@ -294,7 +294,7 @@ int AtiendeCliente(void * arg) {
 
 		printf("ESTOY RECIBIENDO ESTO: %s", buffer);
 
-		int error;
+
 		int funcion;
 		if (bytesRecibidos > 0) {
 			//Analisamos que peticion nos está haciendo (obtenemos el comando)
@@ -329,37 +329,7 @@ int AtiendeCliente(void * arg) {
 
 						break;
 
-						case 4: //PARA LOS MSJs que manda SWAP // TODO:pasarlo adentro de los case de arriba
-							funcion = ObtenerComandoMSJ(buffer+1);
-						   // switch con los distintos codigos de mensaje
-								switch (funcion){
-									case 1: //Inicio
 
-										resultadoInicioSwap(buffer);
-									break;
-
-									case 2: //Lectura
-
-										error = ObtenerComandoMSJ(buffer+2);
-										if(error==0){
-											printf("Error en la lectura\n");
-
-										}else{
-											resultadoLecturaSwap(buffer);
-										}
-
-									break;
-
-									case 3: //Escritura
-										resultadoEscrituraSwap(buffer);
-									break;
-
-									case 4: //Fin
-										resultadoFinSwap(buffer);
-									break;
-								}
-						mensaje = "ok";
-						break;
 
 						default:
 						break;
@@ -378,10 +348,47 @@ int AtiendeCliente(void * arg) {
 	return code;
 }
 
+void mensajeDeSwap(char * buffer){
+		int funcion;
+		int error;
+
+		 //PARA LOS MSJs que manda SWAP // TODO:pasarlo adentro de los case de arriba
+		funcion = ObtenerComandoMSJ(buffer+1);
+								   // switch con los distintos codigos de mensaje
+		switch (funcion){
+											case 1: //Inicio
+												resultadoInicioSwap(buffer);
+											break;
+
+											case 2: //Lectura
+												error = ObtenerComandoMSJ(buffer+2);
+												if(error==0){
+													printf("Error en la lectura\n");
+												}else{
+													resultadoLecturaSwap(buffer);
+												}
+											break;
+
+											case 3: //Escritura
+												resultadoEscrituraSwap(buffer);
+											break;
+
+											case 4: //Fin
+												resultadoFinSwap(buffer);
+											break;
+
+											default:
+												printf("ok/n");
+											break;
+		}
+
+
+
+}
+
 void finProcesoSwap(int pid){
 
-		int socket_swap;
-		conectarConSwap(&socket_swap);
+
 		//35+pid
 		char* buffer = string_new();
 		string_append(&buffer,"35");
@@ -391,15 +398,14 @@ void finProcesoSwap(int pid){
 		int bytesRecibidos;
 		int cantRafaga = 1, tamanio = 0;
 		buffer = RecibirDatos(socket_swap, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
-
+		mensajeDeSwap(buffer);
 }
 
 void inicioProcesoSwap(int pid, int cant_pag){
 	//int bytesRecibidos;
 		//int cantRafaga=1,tamanio=0;
 
-		int socket_swap;
-		conectarConSwap(&socket_swap);
+
 		//32+pid+cantidad paginas
 		char* buffer = string_new();
 		string_append(&buffer,"32");
@@ -412,13 +418,13 @@ void inicioProcesoSwap(int pid, int cant_pag){
 		//AtiendeCliente((void *)socket_swap);
 		buffer = RecibirDatos(socket_swap, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
 		printf("ESTOY RECIBIENDO ESTO PRUEBA CROTA: %s", buffer);
+		mensajeDeSwap(buffer);
 
 }
 
 void leerSwap(int pid, int num_pag){
 
-		int socket_swap;
-		conectarConSwap(&socket_swap);
+
 		//33+pid+numero pagina
 		char* buffer = string_new();
 		string_append(&buffer,"33");
@@ -430,13 +436,12 @@ void leerSwap(int pid, int num_pag){
 		int bytesRecibidos;
 		int cantRafaga = 1, tamanio = 0;
 		buffer = RecibirDatos(socket_swap, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
-
+		mensajeDeSwap(buffer);
 }
 
 void escribirSwap(int pid, int num_pag, char* contenido){
 
-		int socket_swap;
-		conectarConSwap(&socket_swap);
+
 		//34+pid+numero pagina
 		char* buffer = string_new();
 		string_append(&buffer,"34");
@@ -448,12 +453,13 @@ void escribirSwap(int pid, int num_pag, char* contenido){
 		int bytesRecibidos;
 		int cantRafaga = 1, tamanio = 0;
 		buffer = RecibirDatos(socket_swap, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
+		mensajeDeSwap(buffer);
 }
 
 void ConectarseConSwap(int g_Puerto_Memoria){
 
 
-	//int bytesRecibidos,cantRafaga=1,tamanio;
+	int bytesRecibidos,cantRafaga=1,tamanio;
 	char*buffer = string_new();
 	char*bufferR = string_new();
 	char*bufferE = string_new();
@@ -471,7 +477,7 @@ void ConectarseConSwap(int g_Puerto_Memoria){
 		string_append(&buffer,aux);
 
 		EnviarDatos(socket_swap,buffer, strlen(buffer));
-		//bufferR = RecibirDatos(socket_swap,bufferR, &bytesRecibidos,&cantRafaga,&tamanio);
+		bufferR = RecibirDatos(socket_swap,bufferR, &bytesRecibidos,&cantRafaga,&tamanio);
 
 		free(buffer);
 		free(bufferR);

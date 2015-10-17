@@ -119,4 +119,5 @@ int finProcesoCpu(char*ip, char*puerto);
 int inicioProcesoCpu(char*ip, char*puerto,char* resultado);
 int escribirCpu(char*ip, char*puerto,char* resultado);
 int leerCpu(char*ip, char*puerto,char* pagina,char* contenido);
+void mensajeDeSwap(char * buffer);
 

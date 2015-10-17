@@ -335,7 +335,7 @@ void mostrarListaOcupados(){
 
 void iniciarlizarListas(){
 
-	list_add(listaLibre,crearElementoLibre(0,g_Cant_Pags-1));
+	list_add(listaLibre,crearElementoLibre(0,g_Cant_Pags));
 
 }
 
