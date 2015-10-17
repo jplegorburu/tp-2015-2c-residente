@@ -564,17 +564,9 @@ int AtiendeCliente(void * arg) {
 									}
 									break;
 								case 8:
-									if(ObtenerComandoMSJ(buffer+4)==0){
-										printf("ERROR!!!! no pudo leer\n");
-
-										t_global* la_global = buscarGlobalPorPuerto(puerto);
-										//(la_global->finError)=1;
-										string_append(&(la_global->resultado),obtenerSubBuffer("20"));
-									}
-									else{
 										//printf("Lectura realizada\n");
 										leerPlanificador(buffer);
-									}
+
 									break;
 								case 9:
 									{	//printf("Finalizacion\n"); //Grabar Texto

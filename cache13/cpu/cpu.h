@@ -50,8 +50,8 @@ struct struct_atiende {
 typedef struct{
 int puerto;
 int pidGlobal;
-int instrucRealizadasGlobal;
 int finError;
+int instrucRealizadasGlobal;
 char* resultado; //Resultado de las instrucciones
 sem_t sProxInstruccion;
 }t_global;
