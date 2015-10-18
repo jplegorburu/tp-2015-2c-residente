@@ -692,7 +692,7 @@ fclose(archivoMcod);
 
 }
 
-int finRafaga(pid){
+int finRafaga(int pid){
 	printf("\n\n !!!!se utiliza la funcion finalizar momentaneamente!!! \n\n");
 	return finalizar(pid); //momentaneamnete usamos esta funcion. ojo, el PID no debe terminar en memoria.
 }

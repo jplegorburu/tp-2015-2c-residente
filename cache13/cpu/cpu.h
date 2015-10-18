@@ -120,4 +120,4 @@ int finalizar(int pid);
 int finalizarPlanificador();
 t_global* buscarGlobalPorPuerto(int puerto);
 int leerPlanificador(char* buffer);
-int finRafaga(pid);
+int finRafaga(int pid);
