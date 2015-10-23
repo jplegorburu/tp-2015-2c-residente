@@ -9,17 +9,50 @@ int main(int argv, char** argc) {
 	listaOcupado = list_create();
 	listaLibre = list_create();
 
-
+	int test;
 
 	// Levantamos el archivo de configuracion.
 	LevantarConfig();
 
 	crearArchivoParticionSwap();
 
+	abrirArchivoParticionSwap();
+
+	/*
+	test = setPaginaDeArchivo(0,"cero");
+	test = setPaginaDeArchivo(1,"hola");
+	test = setPaginaDeArchivo(2,"como");
+	test = setPaginaDeArchivo(3,"estas");
+	test = setPaginaDeArchivo(4,"vos");
+	test = setPaginaDeArchivo(5,"yo");
+	test = setPaginaDeArchivo(6,"bien");
+	test = setPaginaDeArchivo(7,"espectacular");
+
+	printf("Leido bloque %d: %s\n", 0, getPaginaDeArchivo(0));
+	printf("Leido bloque %d: %s\n", 1, getPaginaDeArchivo(1));
+	printf("Leido bloque %d: %s\n", 2, getPaginaDeArchivo(2));
+	printf("Leido bloque %d: %s\n", 3, getPaginaDeArchivo(3));
+	printf("Leido bloque %d: %s\n", 4, getPaginaDeArchivo(4));
+	printf("Leido bloque %d: %s\n", 5, getPaginaDeArchivo(5));
+	printf("Leido bloque %d: %s\n", 6, getPaginaDeArchivo(6));
+	printf("Leido bloque %d: %s\n", 7, getPaginaDeArchivo(7));
+
+	quitarProcesoDeArchivo(1,1);
+	quitarProcesoDeArchivo(5,1);
+
+	printf("\nLeido bloque %d: %s\n", 0, getPaginaDeArchivo(0));
+	printf("Leido bloque %d: %s\n", 1, getPaginaDeArchivo(1));
+	printf("Leido bloque %d: %s\n", 2, getPaginaDeArchivo(2));
+	printf("Leido bloque %d: %s\n", 3, getPaginaDeArchivo(3));
+	printf("Leido bloque %d: %s\n", 4, getPaginaDeArchivo(4));
+	printf("Leido bloque %d: %s\n", 5, getPaginaDeArchivo(5));
+	printf("Leido bloque %d: %s\n", 6, getPaginaDeArchivo(6));
+	printf("Leido bloque %d: %s\n", 7, getPaginaDeArchivo(7));
+	 */
+
 	iniciarlizarListas();
 
-	/*int test;
-
+	/*
 	test = agregarProceso(2,30);
 	mostrarListaLibres();
 	mostrarListaOcupados();
@@ -40,11 +73,11 @@ int main(int argv, char** argc) {
 	mostrarListaLibres();
 	mostrarListaOcupados();
 
-	quitarProceso(3);
+	test = quitarProceso(3);
 	mostrarListaLibres();
 	mostrarListaOcupados();
 
-	quitarProceso(5);
+	test = quitarProceso(5);
 	mostrarListaLibres();
 	mostrarListaOcupados();
 
@@ -64,7 +97,7 @@ int main(int argv, char** argc) {
 	mostrarListaLibres();
 	mostrarListaOcupados();
 
-	quitarProceso(4);
+	test = quitarProceso(4);
 	mostrarListaLibres();
 	mostrarListaOcupados();
 
@@ -74,15 +107,41 @@ int main(int argv, char** argc) {
 
 	escucharConexiones();
 
+	cerrarArchivoParticionSwap();
 
 	return EXIT_SUCCESS;
 
 }
 
+void quitarProcesoDeArchivo(int inicio, int cantPaginas){
 
-void quitarProceso(int pid){
+	long int offset=inicio*g_Tam_Pags;
 
-	printf("\nQUITAR PROCESO %d\n",pid);
+	int c,d;
+
+	for(c=0;c<cantPaginas;c++){
+		for(d=0;d<g_Tam_Pags;d++){
+			fseek(archivoSwap, offset, SEEK_SET);
+			fwrite("\0", 1, 1, archivoSwap);
+			offset++;
+		}
+	}
+
+}
+
+char* getPaginaDeArchivo(int numero){
+	long unsigned offset = numero*g_Tam_Pags;
+	char*txtBloq = malloc(g_Tam_Pags);
+
+	memset(txtBloq, '\0', g_Tam_Pags +1);
+
+	fseek(archivoSwap, offset, SEEK_SET);
+	fread(txtBloq, 1, g_Tam_Pags, archivoSwap);
+
+	return txtBloq;
+}
+
+int setPaginaDeArchivo(int pid, int pagina, char* datos){
 
 	bool _trueOcupados(void *elem) {
 			return (((espacio_ocupado*) elem)->pid == pid);
@@ -91,52 +150,120 @@ void quitarProceso(int pid){
 	espacio_ocupado *ocupado = malloc(sizeof(espacio_ocupado));
 	ocupado = list_find(listaOcupado, _trueOcupados);
 
-	bool _trueLibreDerecha(void *elem) {
-		return (((espacio_libre*) elem)->paginaInicio == (ocupado->paginaInicio + ocupado->cantidadPaginas));
+	if(ocupado->paginaInicio+pagina >= g_Cant_Pags){
+		log_info(logger, "Error al escribir archivo SWAP. La pagina %d no existe en el archivo.", ocupado->paginaInicio+pagina);
+		return 0;
+	}else{
+		if(strlen(datos)>g_Tam_Pags){
+			log_info(logger, "Error al escribir archivo SWAP. El dato supera el tamanio de pagina.");
+			return 0;
+		}else{
+
+			char*txtBloq = malloc(g_Tam_Pags+1);
+			long int offset=ocupado->paginaInicio+pagina*g_Tam_Pags;
+
+			//Rellena el txtBloq que se va a grabar
+			memset(txtBloq,'\0',g_Tam_Pags +1);
+			memcpy(txtBloq, datos, strlen(datos)+1);
+
+			//printf("\n Texto a escribir: %s", txtBloq);
+
+			fseek(archivoSwap, offset, SEEK_SET);
+			fwrite(txtBloq, sizeof(char), g_Tam_Pags, archivoSwap);
+
+			free(txtBloq);
+
+			return 1;
+		}
+	}
+}
+
+
+
+void abrirArchivoParticionSwap(){
+	archivoSwap = fopen ( g_Arch_Swap, "r+b" );
+
+	if (archivoSwap==NULL) {
+		fputs ("File error",stderr);
+		exit (1);
+	}
+}
+
+void cerrarArchivoParticionSwap(){
+	fclose(archivoSwap);
+}
+
+int quitarProceso(int pid){
+
+	//printf("\nQUITAR PROCESO %d\n",pid);
+
+	bool _trueOcupados(void *elem) {
+			return (((espacio_ocupado*) elem)->pid == pid);
 	}
 
-	espacio_libre *libreDerecha = malloc(sizeof(espacio_libre));
-	libreDerecha = list_find(listaLibre, _trueLibreDerecha);
+	espacio_ocupado *ocupado = malloc(sizeof(espacio_ocupado));
+	ocupado = list_find(listaOcupado, _trueOcupados);
 
-	bool _trueLibreIzquierda(void *elem) {
-		return ((((espacio_libre*) elem)->paginaInicio + ((espacio_libre*) elem)->cantidadPaginas) == (ocupado->paginaInicio));
-	}
+	if(ocupado==NULL){
+		log_info(logger, "Error al quitar proceso del SWAP. El PID indicado no existe");
+		return 0;
+	}else{
 
-	espacio_libre *libreIzquierda = malloc(sizeof(espacio_libre));
-	libreIzquierda = list_find(listaLibre, _trueLibreIzquierda);
+		//ELIMINO EL PROCESO DEL ARCHUVIO
+		quitarProcesoDeArchivo(ocupado->paginaInicio, ocupado->cantidadPaginas);
 
-	espacio_libre *libre = malloc(sizeof(espacio_libre));
 
-	libre->paginaInicio = ocupado->paginaInicio;
-	libre->cantidadPaginas = ocupado->cantidadPaginas;
+		//ACTUALIZO LAS LISTAS DE LIBRES Y OCUPADOS
 
-	if(libreIzquierda != NULL){
-		libre->paginaInicio = libreIzquierda->paginaInicio;
-		libre->cantidadPaginas = libreIzquierda->cantidadPaginas + ocupado->cantidadPaginas;
-
-		bool _eliminarIzquierda(void *elem) {
-			return (((espacio_libre*) elem)->paginaInicio == libreIzquierda->paginaInicio);
+		bool _trueLibreDerecha(void *elem) {
+			return (((espacio_libre*) elem)->paginaInicio == (ocupado->paginaInicio + ocupado->cantidadPaginas));
 		}
 
-		list_remove_by_condition(listaLibre, _eliminarIzquierda);
-	}
-	if(libreDerecha != NULL){
-		libre->cantidadPaginas = libre->cantidadPaginas + libreDerecha->cantidadPaginas;
+		espacio_libre *libreDerecha = malloc(sizeof(espacio_libre));
+		libreDerecha = list_find(listaLibre, _trueLibreDerecha);
 
-		bool _eliminarDerecha(void *elem) {
-			return (((espacio_libre*) elem)->paginaInicio == libreDerecha->paginaInicio);
+		bool _trueLibreIzquierda(void *elem) {
+			return ((((espacio_libre*) elem)->paginaInicio + ((espacio_libre*) elem)->cantidadPaginas) == (ocupado->paginaInicio));
 		}
-		list_remove_by_condition(listaLibre, _eliminarDerecha);
 
+		espacio_libre *libreIzquierda = malloc(sizeof(espacio_libre));
+		libreIzquierda = list_find(listaLibre, _trueLibreIzquierda);
+
+		espacio_libre *libre = malloc(sizeof(espacio_libre));
+
+		libre->paginaInicio = ocupado->paginaInicio;
+		libre->cantidadPaginas = ocupado->cantidadPaginas;
+
+		if(libreIzquierda != NULL){
+			libre->paginaInicio = libreIzquierda->paginaInicio;
+			libre->cantidadPaginas = libreIzquierda->cantidadPaginas + ocupado->cantidadPaginas;
+
+			bool _eliminarIzquierda(void *elem) {
+				return (((espacio_libre*) elem)->paginaInicio == libreIzquierda->paginaInicio);
+			}
+
+			list_remove_by_condition(listaLibre, _eliminarIzquierda);
+		}
+		if(libreDerecha != NULL){
+			libre->cantidadPaginas = libre->cantidadPaginas + libreDerecha->cantidadPaginas;
+
+			bool _eliminarDerecha(void *elem) {
+				return (((espacio_libre*) elem)->paginaInicio == libreDerecha->paginaInicio);
+			}
+			list_remove_by_condition(listaLibre, _eliminarDerecha);
+
+		}
+
+		agregarElementoALibres(libre->paginaInicio, libre->cantidadPaginas);
+
+		list_remove_by_condition(listaOcupado, _trueOcupados);
+
+		free(libreDerecha);
+		free(libreIzquierda);
+		free(libre);
+
+		return 1;
 	}
-
-	agregarElementoALibres(libre->paginaInicio, libre->cantidadPaginas);
-
-	list_remove_by_condition(listaOcupado, _trueOcupados);
-
-	free(libreDerecha);
-	free(libreIzquierda);
-	free(libre);
 }
 
 //DEVUELVE 1 SI EL PROCESO SE PUDO INICIAR Y 0 SI SE RECHAZO POR FALTA DE ESPACIO EN SWAP
@@ -145,18 +272,22 @@ int agregarProceso(int pid, int paginas){
 
 	if(paginaDeInicio != -1){
 		agregarProcesoYActualizarListas(pid, paginaDeInicio, paginas);
-		printf("\nPROCESO %d AGREGADO! Paginas: %d\n", pid, paginas);
+		//printf("\nPROCESO %d AGREGADO! Paginas: %d\n", pid, paginas);
 	}else{
 		if(hayLugarCompactando(paginas)){
 			//COMPACTAR
-			printf("\nCOMPACTAR!\n");
+			//printf("\nCOMPACTAR!\n");
 			compactar();
+
+			log_info(logger, "COMENZANDO COMPACTACION.");
+
 			paginaDeInicio = hayLugarLibreSinCompactar(paginas);
 			agregarProcesoYActualizarListas(pid, paginaDeInicio, paginas);
-			printf("\nPROCESO %d AGREGADO! Paginas: %d\n", pid, paginas);
+			//printf("\nPROCESO %d AGREGADO! Paginas: %d\n", pid, paginas);
 		}else{
 			// 0 indica proceso rechazado
-			printf("\nPROCESO %d RECHAZADO! Paginas: %d\n", pid, paginas);
+			//printf("\nPROCESO %d RECHAZADO! Paginas: %d\n", pid, paginas);
+			log_info(logger, "ESPACIO EN SWAP INSUFICIENTE. Paginas solicitadas: %d", paginas);
 			return 0;
 		}
 	}
@@ -354,12 +485,11 @@ void escucharConexiones(){
 
 	socket_host = socket(AF_INET, SOCK_STREAM, 0);
 	if (socket_host == -1)
-		log_info(logger,
-				"No se pudo inicializar el socket que escucha a los clientes");
+		Error("No se pudo inicializar el socket que escucha a los clientes");
 
 	if (setsockopt(socket_host, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int))
 			== -1) {
-		log_info(logger,"Error al hacer el 'setsockopt'");
+		Error("Error al hacer el 'setsockopt'");
 	}
 
 	my_addr.sin_family = AF_INET;
@@ -368,11 +498,10 @@ void escucharConexiones(){
 	memset(&(my_addr.sin_zero), '\0', 8 * sizeof(char));
 
 	if (bind(socket_host, (struct sockaddr*) &my_addr, sizeof(my_addr)) == -1)
-		log_info(logger,"Error al hacer el Bind. El puerto está en uso");
+		Error("Error al hacer el Bind. El puerto está en uso");
 
 	if (listen(socket_host, 10) == -1) // el "10" es el tamaño de la cola de conexiones.
-		log_info(logger,
-				"Error al hacer el Listen. No se pudo escuchar en el puerto especificado");
+		Error("Error al hacer el Listen. No se pudo escuchar en el puerto especificado");
 
 	// La variable fin se usa cuando el cliente quiere cerrar la conexion: chau chau!
 		int desconexionCliente = 0;
@@ -403,7 +532,7 @@ void escucharConexiones(){
 				int bytesRecibidos;
 
 			// Código de salida por defecto
-				int code = 0;
+				//int code = 0;
 				int cantRafaga=1,tamanio=0;
 				char * mensaje;
 
@@ -416,8 +545,6 @@ void escucharConexiones(){
 						//Recibimos los datos del cliente
 						buffer = RecibirDatos(socket_client, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
 
-						printf("\nESTOY RECIBIENDO DE MEMORIA: %s\n", buffer);
-
 						if (bytesRecibidos > 0) {
 							//Analisamos que peticion nos está haciendo (obtenemos el comando)
 							emisor = ObtenerComandoMSJ(buffer);
@@ -428,12 +555,13 @@ void escucharConexiones(){
 
 								case 3: //3 es memoria
 
+									//printf("\nESTOY RECIBIENDO DE MEMORIA: %s\n", buffer);
 									funcion = ObtenerComandoMSJ(buffer+1);
 									switch (funcion){
 										case 1:
 											//CONEXION CON SWAP
-											printf("Conexion con Memoria establecida\n");
-											mensaje = "OK";
+											//printf("Conexion con Memoria establecida\n");
+											mensaje = informarConexionConMemoria(buffer);
 										break;
 
 										case 2:
@@ -448,6 +576,7 @@ void escucharConexiones(){
 
 										case 4:
 											//ESCRIBIR PAGINA
+											mensaje = informarEscrituraPagina(buffer);
 										break;
 
 										case 5:
@@ -458,7 +587,7 @@ void escucharConexiones(){
 							}
 
 							longitudBuffer=strlen(mensaje);
-							printf("\nRespuesta: %s\n",mensaje);
+							//printf("\nESTOY ENVIANDO A MEMORIA: %s\n",mensaje);
 							// Enviamos datos al cliente.
 							EnviarDatos(socket_client, mensaje,longitudBuffer);
 						} else{
@@ -506,15 +635,17 @@ char *leerPagina(int pid, int pagina){
 	espacio_ocupado *ocupado = malloc(sizeof(espacio_ocupado));
 	ocupado = list_find(listaOcupado, _trueOcupados);
 
-	//VALIDAR POR SI NO EXISTE PID
-
-
-
-	//OJO QUE LA PAGINA DE INICIO COMIENZA EN 1.
-	//SI QUIERO LEER LA PAGINA 3, DEBO HACER PAGDEINICIO + PAGINA (EN ESTE CASO 3) - 1
-
-
-	string_append(&lectura,string_itoa(ocupado->paginaInicio+pagina));
+	if(ocupado==NULL){
+		log_info(logger, "Error al leer pagina en SWAP. El PID indicado no existe en la particion SWAP. PID: %d",pid);
+		string_append(&lectura,"0");
+	}else{
+		if(ocupado->paginaInicio+pagina >= g_Cant_Pags){
+			log_info(logger,"Error al leer pagina en SWAP. La pagina no existe en el archivo.");
+			string_append(&lectura,"0");
+		}else{
+			string_append(&lectura,getPaginaDeArchivo(ocupado->paginaInicio+pagina));
+		}
+	}
 
 	return lectura;
 }
@@ -524,20 +655,69 @@ char* informarLecturaPagina(char* buffer){
 	int posActual = 2;
 
 	char *msg = string_new();
+	char *resultadoLectura = string_new();
 
 	pid = DigitosNombreArchivo(buffer, &posActual);
-	printf("pid:%s\n", pid);
+	//printf("pid:%s\n", pid);
 
 	nroPagina = DigitosNombreArchivo(buffer, &posActual);
-	printf("Nro de pagina:%s\n", nroPagina);
+	//printf("Nro de pagina:%s\n", nroPagina);
+
+	resultadoLectura = leerPagina(CharAToInt(pid), CharAToInt(nroPagina));
 
 	 //Error en la lectura -->  42 + PID + 0
 	// Lectura exitosa --> 42 + PID + Pagina + Contenido
 	string_append(&msg,"42");
 	string_append(&msg,obtenerSubBuffer(pid));
-	//0 SI HUBO ERROR
-	string_append(&msg,obtenerSubBuffer(nroPagina));
-	string_append(&msg,obtenerSubBuffer(leerPagina(CharAToInt(pid), CharAToInt(nroPagina))));
+
+	if(strcmp(resultadoLectura,"0")==0){
+		//0 SI HUBO ERROR
+		string_append(&msg,"0");
+
+		Error("NO SE PUDO LEER LA PAGINA SOLICITADA. PID: %s, Nro de pagina: %s", pid, nroPagina);
+	}else{
+		string_append(&msg,obtenerSubBuffer(nroPagina));
+		string_append(&msg,obtenerSubBuffer(resultadoLectura));
+
+		log_info(logger, "LECTURA PAGINA. PID: %s, Nro de Pagina: %s, Contenido: %s", pid, nroPagina, resultadoLectura);
+	}
+
+	return msg;
+}
+
+char* informarEscrituraPagina(char* buffer){
+	char *pid, *nroPagina, *contenido;
+	int posActual = 2;
+
+	int resultado;
+
+	char *msg = string_new();
+
+	pid = DigitosNombreArchivo(buffer, &posActual);
+	//printf("pid:%s\n", pid);
+
+	nroPagina = DigitosNombreArchivo(buffer, &posActual);
+	//printf("Nro de pagina:%s\n", nroPagina);
+
+	contenido = DigitosNombreArchivo(buffer, &posActual);
+	//printf("Contenido:%s\n", contenido);
+
+	resultado = setPaginaDeArchivo(CharAToInt(pid), CharAToInt(nroPagina), contenido);
+
+	 // 43 + pid + pagina + contenido ==> OK
+	// 43 + pid + 0 ==> FALLO
+	string_append(&msg,"43");
+	string_append(&msg,obtenerSubBuffer(pid));
+
+	if(resultado==0){
+		//0 SI HUBO ERROR
+		string_append(&msg,"0");
+		Error("NO SE PUDO ESCRIBIR PAGINA. PID: %s, Nro Pagina: %s, Contenido: %s", pid, nroPagina, contenido);
+	}else{
+		string_append(&msg,obtenerSubBuffer(nroPagina));
+		string_append(&msg,obtenerSubBuffer(contenido));
+		log_info(logger, "ESCRITURA REALIZADA. PID: %s, Nro Pagina: %s, Contenido: %s", pid, nroPagina, contenido);
+	}
 
 	return msg;
 }
@@ -546,18 +726,54 @@ char* informarQuitarProceso(char* buffer){
 	char *pid;
 	int posActual = 2;
 
+	int resultado;
+
 	char *msg = string_new();
 
 	pid = DigitosNombreArchivo(buffer, &posActual);
-	printf("pid:%s\n", pid);
+	//printf("pid:%s\n", pid);
 
-	quitarProceso(CharAToInt(pid));
+	resultado = quitarProceso(CharAToInt(pid));
+
+	if(resultado==0){
+		Error("NO SE PUDO FINALIZAR PROCESO. PID: %s", pid);
+	}else{
+		log_info(logger, "PROCESO FINALZADO. PID: %s", pid);
+	}
+
 	 // 44 + pid + resultado
-
 	string_append(&msg,"44");
 	string_append(&msg,obtenerSubBuffer(pid));
-	string_append(&msg,obtenerSubBuffer(string_itoa(1)));
+	string_append(&msg,obtenerSubBuffer(string_itoa(resultado)));
 
+	return msg;
+}
+
+char* informarConexionConMemoria(char*buffer){
+	char *la_Ip, *el_Puerto;
+	int digitosCantNumIp = 0, tamanioDeIp;
+	int posActual = 0;
+
+	digitosCantNumIp = PosicionDeBufferAInt(buffer, 2);
+
+	tamanioDeIp = ObtenerTamanio(buffer, 3, digitosCantNumIp);
+
+	if (tamanioDeIp >= 10) {
+		posActual = digitosCantNumIp;
+	} else {
+		posActual = 1 + digitosCantNumIp;
+	}
+	//Chequeo el tamaño de la ip xq si es mas chica de 10 puede generar fallas.
+	la_Ip = DigitosNombreArchivo(buffer, &posActual);
+	//printf("Ip:%s\n",la_Ip);
+	el_Puerto = DigitosNombreArchivo(buffer, &posActual);
+	//printf("Puerto:%s\n",el_Puerto);
+
+	log_info(logger,"Conexion con memoria establecida. IP: %s, PUERTO: %s",la_Ip,el_Puerto);
+
+	char *msg = string_new();
+
+	string_append(&msg,"OK");
 	return msg;
 }
 
@@ -569,23 +785,25 @@ char* informarAgregarProceso(char* buffer){
 	char *msg = string_new();
 
 	pid = DigitosNombreArchivo(buffer, &posActual);
-	printf("pid:%s\n", pid);
+	//printf("pid:%s\n", pid);
 
 	cantPaginas = DigitosNombreArchivo(buffer, &posActual);
-	printf("Cantidad de paginas:%s\n", cantPaginas);
+	//printf("Cantidad de paginas:%s\n", cantPaginas);
 
-	printf("Cantidad de paginas:%d\n", CharAToInt(cantPaginas));
+	//printf("Cantidad de paginas:%d\n", CharAToInt(cantPaginas));
 
 	resultado = agregarProceso(CharAToInt(pid), CharAToInt(cantPaginas));
 
 	//DEVUELVO 41 + pid + resultado
 	if(resultado==1){
-		printf("\nEL PROCESO %s SE INICIO\n", pid);
+		//printf("\nEL PROCESO %s SE INICIO\n", pid);
+		log_info(logger, "PROCESO INICIADO. PID: %s", pid);
 	}else{
-		printf("\nEL PROCESO %s NO SE INICIO\n", pid);
+		//printf("\nEL PROCESO %s NO SE INICIO\n", pid);
+		log_info(logger, "NO SE PUDO INICIAR PROCESO. PID: %s", pid);
 	}
 
-	mostrarListaLibres();
+	//mostrarListaLibres();
 
 	string_append(&msg,"41");
 	string_append(&msg,obtenerSubBuffer(pid));
@@ -653,7 +871,7 @@ void Error(const char* mensaje, ...) {
 	va_start(arguments, mensaje);
 	nuevo = string_from_vformat(mensaje, arguments);
 
-	fprintf(stderr, "\nERROR: %s\n", nuevo);
+	//fprintf(stderr, "\nERROR: %s\n", nuevo);
 	log_error(logger, "%s", nuevo);
 
 	va_end(arguments);
@@ -793,7 +1011,7 @@ char* RecibirDatos(int socket, char *buffer, int *bytesRecibidos,int *cantRafaga
 		memset(bufferAux, 0, BUFFERSIZE * sizeof(char)); //-> llenamos el bufferAux con barras ceros.
 
 		if ((*bytesRecibidos = *bytesRecibidos+recv(socket, bufferAux, BUFFERSIZE, 0)) == -1) {
-			log_info(logger,"Ocurrio un error al intentar recibir datos desde uno de los clientes. Socket: %d",socket);
+			Error("Ocurrio un error al intentar recibir datos desde uno de los clientes. Socket: %d",socket);
 		}
 
 		digTamanio=PosicionDeBufferAInt(bufferAux,1);
@@ -820,15 +1038,18 @@ int EnviarDatos(int socket, char *buffer, int cantidadDeBytesAEnviar) {
 
 	int bytecount;
 
-	printf("\nSOY EL SWAP, ESTOY ENVIANDO: %s\n", buffer);
+	//printf("\nSOY EL SWAP, ESTOY ENVIANDO: %s\n", buffer);
 
 	//printf("CantidadBytesAEnviar:%d\n",cantidadDeBytesAEnviar);
 
 	if ((bytecount = send(socket, buffer, cantidadDeBytesAEnviar, 0)) == -1)
 		log_info(logger,"No puedo enviar información a al clientes. Socket: %d", socket);
-	//printf("Cuanto Envie:%d\n",bytecount);
-	//Traza("ENVIO datos. socket: %d. buffer: %s", socket, (char*) buffer);
 
+
+	log_info(logger,"ENVIO datos. socket: %d. buffer: %s", socket, (char*) buffer);
+
+
+	//printf("Cuanto Envie:%d\n",bytecount);
 	//char * bufferLogueo = malloc(5);
 	//bufferLogueo[cantidadDeBytesAEnviar] = '\0';
 

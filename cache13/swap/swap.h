@@ -40,6 +40,8 @@ int g_Ejecutando = 1;						// - Bandera que controla la ejecución o no del prog
 t_list* listaOcupado;
 t_list* listaLibre;
 
+FILE *archivoSwap;
+
 // TIPOS //
 typedef enum {
 	CantidadArgumentosIncorrecta,
@@ -83,7 +85,7 @@ espacio_libre *crearElementoLibre(int inicio, int paginas);
 void quitarEspacioLibre(int inicio, int paginas);
 void agregarProcesoYActualizarListas(int pid, int inicio, int paginas);
 int agregarProceso(int pid, int paginas);
-void quitarProceso(int pid);
+int quitarProceso(int pid);
 void compactar();
 char* informarAgregarProceso(char* buffer);
 char* DigitosNombreArchivo(char *buffer, int *posicion);
@@ -92,3 +94,12 @@ char* informarQuitarProceso(char* buffer);
 char* informarLecturaPagina(char* buffer);
 char* obtenerSubBuffer(char *nombre);
 char *leerPagina(int pid, int pagina);
+void abrirArchivoParticionSwap();
+void cerrarArchivoParticionSwap();
+int setPaginaDeArchivo(int pid, int pagina, char*datos);
+char* getPaginaDeArchivo(int numero);
+void quitarProcesoDeArchivo(int inicio, int cantPaginas);
+char* informarEscrituraPagina(char* buffer);
+char* informarConexionConMemoria(char*buffer);
+int PosicionDeBufferAInt(char* buffer, int posicion);
+int ObtenerTamanio (char *buffer , int posicion, int dig_tamanio);
