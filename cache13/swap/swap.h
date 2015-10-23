@@ -63,15 +63,36 @@ typedef struct {
 		int cantidadPaginas;
 	} espacio_libre;
 
+
+//MANEJO DE BUFFER
+int ObtenerComandoMSJ(char* buffer);
+char* obtenerSubBuffer(char *nombre);
+char* DigitosNombreArchivo(char *buffer, int *posicion);
+int CharAToInt(char* x);
+char* obtenerSubBuffer(char *nombre);
+int PosicionDeBufferAInt(char* buffer, int posicion);
+int ObtenerTamanio (char *buffer , int posicion, int dig_tamanio);
+
+//MANEJO DE ARCHIVO SWAP
+void crearArchivoParticionSwap();
+void abrirArchivoParticionSwap();
+void cerrarArchivoParticionSwap();
+int setPaginaDeArchivo(int pid, int pagina, char*datos);
+char* getPaginaDeArchivo(int numero);
+void quitarProcesoDeArchivo(int inicio, int cantPaginas);
+char *leerPagina(int pid, int pagina);
+
+//ARCHIVO DE CONFIGURACION Y ERRORES
 void LevantarConfig();
 void Error(const char* mensaje, ...);
+
+//SOCKETS
 void escucharConexiones();
 char* RecibirDatos(int socket, char *buffer, int *bytesRecibidos,int *cantRafaga,int *tamanio);
 int EnviarDatos(int socket, char *buffer, int cantidadDeBytesAEnviar);
 void CerrarSocket(int socket);
-int ObtenerComandoMSJ(char* buffer);
-char* obtenerSubBuffer(char *nombre);
-void crearArchivoParticionSwap();
+
+//MANEJO DE LISTAS Y ESPACIOS
 void iniciarlizarListas();
 bool hayLugar(int cantPaginas);
 void mostrarListaLibres();
@@ -84,22 +105,15 @@ espacio_ocupado *crearElementoOcupado(int pid, int inicio, int paginas);
 espacio_libre *crearElementoLibre(int inicio, int paginas);
 void quitarEspacioLibre(int inicio, int paginas);
 void agregarProcesoYActualizarListas(int pid, int inicio, int paginas);
+void compactar();
+
+//MANEJO DE PROCESOS
 int agregarProceso(int pid, int paginas);
 int quitarProceso(int pid);
-void compactar();
+
+//METODOS DE COMUNICACION
 char* informarAgregarProceso(char* buffer);
-char* DigitosNombreArchivo(char *buffer, int *posicion);
-int CharAToInt(char* x);
 char* informarQuitarProceso(char* buffer);
 char* informarLecturaPagina(char* buffer);
-char* obtenerSubBuffer(char *nombre);
-char *leerPagina(int pid, int pagina);
-void abrirArchivoParticionSwap();
-void cerrarArchivoParticionSwap();
-int setPaginaDeArchivo(int pid, int pagina, char*datos);
-char* getPaginaDeArchivo(int numero);
-void quitarProcesoDeArchivo(int inicio, int cantPaginas);
 char* informarEscrituraPagina(char* buffer);
 char* informarConexionConMemoria(char*buffer);
-int PosicionDeBufferAInt(char* buffer, int posicion);
-int ObtenerTamanio (char *buffer , int posicion, int dig_tamanio);
