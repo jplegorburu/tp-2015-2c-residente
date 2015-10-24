@@ -543,9 +543,7 @@ int AtiendeCliente(void * arg) {
 									}
 										else
 										{
-											printf("Escritura realizada \n");
-											t_global* la_global = buscarGlobalPorPuerto(puerto);
-											string_append(&(la_global->resultado),obtenerSubBuffer("13"));
+											escribirPlanificador(buffer);
 										}
 
 									break;
@@ -558,18 +556,16 @@ int AtiendeCliente(void * arg) {
 										string_append(&(la_global->resultado),obtenerSubBuffer("10"));
 									}
 									else{
-										//printf("Proceso Iniciado \n");
 										t_global* la_global = buscarGlobalPorPuerto(puerto);
 										string_append(&(la_global->resultado),obtenerSubBuffer("11"));
 									}
 									break;
 								case 8:
-										//printf("Lectura realizada\n");
 										leerPlanificador(buffer);
 
 									break;
 								case 9:
-									{	//printf("Finalizacion\n"); //Grabar Texto
+									{
 										t_global* la_global = buscarGlobalPorPuerto(puerto);
 										string_append(&(la_global->resultado),obtenerSubBuffer("5"));
 
@@ -629,7 +625,7 @@ do{
 	//Busco en la lista por puerto, y le resto uno al semaforo para que se bloquee esperando la respuesta de memoria
 	sem_wait(&(la_global->sProxInstruccion));
 	la_global->instrucRealizadasGlobal++;
-	printf("\nNro Inst: %d. RESULTADO PARCIAL: %s\n",la_global->instrucRealizadasGlobal, la_global->resultado);
+	printf("\n (%d) Nro Inst: %d. RESULTADO PARCIAL: %s\n",la_global->puerto,la_global->instrucRealizadasGlobal, la_global->resultado);
 
 
 //Le saco el \n final a la linea ingresada
@@ -639,7 +635,7 @@ char **sinBarraPunto = string_split(sinBarraN[0], ";");
 char **comando = string_split(sinBarraPunto[0], " ");
 char **comando2 = string_split(sinBarraN[0], "\"");
 
-printf("\nIntruccion: %s\n",comando[0]);
+//printf("\nIntruccion: %s\n",comando[0]);
 if (strcmp(comando[0], "iniciar") == 0) {
 	if(iniciar(CharAToInt(comando[1]),pid)==-1)
 		printf("Error, no se pudo iniciar");
@@ -668,7 +664,7 @@ if (strcmp(comando[0], "entrada-salida") == 0) {
 }
 
 if (strcmp(comando[0], "finalizar") == 0) {
-	printf("\n\nFinalizar\n\n");
+	//printf("\n\nFinalizar\n\n");
 	fin = 1;
 	if(finalizar(pid)==-1)
 		printf("Error, no se pudo leer");
@@ -900,6 +896,25 @@ int leerPlanificador(char* buffer) {
 	contenido = DigitosNombreArchivo(buffer, &posActual);
 	//printf("Puerto:%s\n",el_Puerto);
 	string_append(&armarResultado,"2");
+	string_append(&armarResultado,obtenerSubBuffer(pagina));
+	string_append(&armarResultado,obtenerSubBuffer(contenido));
+	string_append(&(la_global->resultado),obtenerSubBuffer(armarResultado));
+
+	free(armarResultado);
+	return 1;
+}
+
+int escribirPlanificador(char* buffer) {
+
+	char *pagina, *contenido,*armarResultado;
+	armarResultado=string_new();
+	int posActual = 2;
+	t_global* la_global = buscarGlobalPorPuerto(puerto);
+	pagina = DigitosNombreArchivo(buffer, &posActual);
+	//printf("Ip:%s\n",la_Ip);
+	contenido = DigitosNombreArchivo(buffer, &posActual);
+	//printf("Puerto:%s\n",el_Puerto);
+	string_append(&armarResultado,"3");
 	string_append(&armarResultado,obtenerSubBuffer(pagina));
 	string_append(&armarResultado,obtenerSubBuffer(contenido));
 	string_append(&(la_global->resultado),obtenerSubBuffer(armarResultado));
