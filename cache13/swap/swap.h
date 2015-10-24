@@ -36,7 +36,9 @@ char* g_Arch_Swap;
 int g_Cant_Pags;
 int g_Tam_Pags;
 int g_Retardo_Compact;
-int g_Ejecutando = 1;						// - Bandera que controla la ejecución o no del programa. Si está en 0 el programa se cierra.
+int g_Retardo_Swap;
+int g_Ejecutando = 1;
+// - Bandera que controla la ejecución o no del programa. Si está en 0 el programa se cierra.
 t_list* listaOcupado;
 t_list* listaLibre;
 
