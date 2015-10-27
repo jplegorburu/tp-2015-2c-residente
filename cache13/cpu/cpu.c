@@ -535,7 +535,7 @@ int AtiendeCliente(void * arg) {
 							funcion = ObtenerComandoMSJ(buffer+1);
 							switch(funcion){
 								case 6:
-									if(ObtenerComandoMSJ(buffer+4)==0){
+									if(ObtenerComandoMSJ(buffer+2)==0){
 										printf("ERROR!!!! No se puede escribir \n");
 										t_global* la_global = buscarGlobalPorPuerto(puerto);
 										(la_global->finError)=1;

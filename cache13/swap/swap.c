@@ -113,12 +113,19 @@ int main(int argv, char** argc) {
 
 }
 
+void mostrarTodoElArchivo(){
+	int c=0;
+
+	for(c=0;c<40;c++){
+		printf("Pagina: %d, Contenido: %s\n", c,getPaginaDeArchivo(c) );
+	}
+}
+
 void quitarProcesoDeArchivo(int inicio, int cantPaginas){
 
 	long int offset=inicio*g_Tam_Pags;
 
 	int c,d;
-
 	for(c=0;c<cantPaginas;c++){
 		for(d=0;d<g_Tam_Pags;d++){
 			fseek(archivoSwap, offset, SEEK_SET);
@@ -163,7 +170,7 @@ int setPaginaDeArchivo(int pid, int pagina, char* datos){
 		}else{
 
 			char*txtBloq = malloc(g_Tam_Pags+1);
-			long int offset=ocupado->paginaInicio+pagina*g_Tam_Pags;
+			long int offset=(ocupado->paginaInicio+pagina)*g_Tam_Pags;
 
 			//Rellena el txtBloq que se va a grabar
 			memset(txtBloq,'\0',g_Tam_Pags +1);
@@ -177,7 +184,7 @@ int setPaginaDeArchivo(int pid, int pagina, char* datos){
 			//Retardo de SWAP
 			sleep(g_Retardo_Swap);
 
-			log_info(logger, "ESCRITURA REALIZADA. PID: %d, Nro de Pagina: %d, Nro byte inicial: %d, Tamanio: %d, Contenido: %s", pid, pagina, pagina*g_Tam_Pags, strlen(datos),datos);
+			log_info(logger, "ESCRITURA REALIZADA. PID: %d, Nro de Pagina: %d, Nro byte inicial: %d, Tamanio: %d, Contenido: %s", pid, pagina, ocupado->paginaInicio*g_Tam_Pags, strlen(datos),datos);
 
 			return 1;
 		}
@@ -619,7 +626,7 @@ char *leerPagina(int pid, int pagina){
 			string_append(&lectura,"0");
 		}else{
 			string_append(&lectura,getPaginaDeArchivo(ocupado->paginaInicio+pagina));
-			log_info(logger, "LECTURA PAGINA. PID: %d, Nro de Pagina: %d, Nro byte inicial: %d, Tamanio: %d, Contenido: %s", pid, pagina, pagina*g_Tam_Pags, strlen(lectura),lectura);
+			log_info(logger, "LECTURA PAGINA. PID: %d, Nro de Pagina: %d, Nro byte inicial: %d, Tamanio: %d, Contenido: %s", pid, pagina, ocupado->paginaInicio*g_Tam_Pags, strlen(lectura),lectura);
 		}
 	}
 

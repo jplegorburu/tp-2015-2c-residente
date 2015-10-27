@@ -83,6 +83,7 @@ int setPaginaDeArchivo(int pid, int pagina, char*datos);
 char* getPaginaDeArchivo(int numero);
 void quitarProcesoDeArchivo(int inicio, int cantPaginas);
 char *leerPagina(int pid, int pagina);
+void mostrarTodoElArchivo();
 
 //ARCHIVO DE CONFIGURACION Y ERRORES
 void LevantarConfig();
