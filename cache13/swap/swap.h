@@ -79,11 +79,14 @@ int ObtenerTamanio (char *buffer , int posicion, int dig_tamanio);
 void crearArchivoParticionSwap();
 void abrirArchivoParticionSwap();
 void cerrarArchivoParticionSwap();
-int setPaginaDeArchivo(int pid, int pagina, char*datos);
+void setPaginaDeArchivo(int pagina, char* datos);
 char* getPaginaDeArchivo(int numero);
 void quitarProcesoDeArchivo(int inicio, int cantPaginas);
 char *leerPagina(int pid, int pagina);
 void mostrarTodoElArchivo();
+void swapearPaginas(int inicioOriginal, int cantPagsOriginal, int inicioNuevo);
+void quitarPaginaDeArchivo(int pagina);
+int escribirPagina(int pid, int pagina, char* datos);
 
 //ARCHIVO DE CONFIGURACION Y ERRORES
 void LevantarConfig();

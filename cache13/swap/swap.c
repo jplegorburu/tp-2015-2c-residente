@@ -9,7 +9,7 @@ int main(int argv, char** argc) {
 	listaOcupado = list_create();
 	listaLibre = list_create();
 
-	int test;
+	//int test;
 
 	// Levantamos el archivo de configuracion.
 	LevantarConfig();
@@ -52,16 +52,16 @@ int main(int argv, char** argc) {
 
 	iniciarlizarListas();
 
-	/*
-	test = agregarProceso(2,30);
+
+	/*test = agregarProceso(2,10);
 	mostrarListaLibres();
 	mostrarListaOcupados();
 
-	test = agregarProceso(3,50);
+	test = agregarProceso(3,20);
 	mostrarListaLibres();
 	mostrarListaOcupados();
 
-	test = agregarProceso(4,20);
+	test = agregarProceso(4,25);
 	mostrarListaLibres();
 	mostrarListaOcupados();
 
@@ -81,9 +81,23 @@ int main(int argv, char** argc) {
 	mostrarListaLibres();
 	mostrarListaOcupados();
 
-	test = agregarProceso(7,160);
+	setPaginaDeArchivo(3,"cero");
+	setPaginaDeArchivo(4,"hola");
+	setPaginaDeArchivo(5,"como");
+	setPaginaDeArchivo(35,"esta");
+	setPaginaDeArchivo(36,"vos");
+	setPaginaDeArchivo(38,"yo");
+	setPaginaDeArchivo(40,"bien");
+	setPaginaDeArchivo(41,"espe");
+
+
+	mostrarTodoElArchivo();
+
+	test = agregarProceso(7,27);
 	mostrarListaLibres();
 	mostrarListaOcupados();
+
+	mostrarTodoElArchivo();
 
 	test = agregarProceso(8,80);
 	mostrarListaLibres();
@@ -122,18 +136,22 @@ void mostrarTodoElArchivo(){
 }
 
 void quitarProcesoDeArchivo(int inicio, int cantPaginas){
-
-	long int offset=inicio*g_Tam_Pags;
-
-	int c,d;
-	for(c=0;c<cantPaginas;c++){
-		for(d=0;d<g_Tam_Pags;d++){
-			fseek(archivoSwap, offset, SEEK_SET);
-			fwrite("\0", 1, 1, archivoSwap);
-			offset++;
-		}
+	int c;
+	for(c=inicio;c<(inicio+cantPaginas);c++){
+		quitarPaginaDeArchivo(c);
 	}
+}
 
+void quitarPaginaDeArchivo(int pagina){
+	long int offset=pagina*g_Tam_Pags;
+
+	int d;
+
+	for(d=0;d<g_Tam_Pags;d++){
+		fseek(archivoSwap, offset, SEEK_SET);
+		fwrite("\0", 1, 1, archivoSwap);
+		offset++;
+	}
 }
 
 char* getPaginaDeArchivo(int numero){
@@ -145,50 +163,21 @@ char* getPaginaDeArchivo(int numero){
 	fseek(archivoSwap, offset, SEEK_SET);
 	fread(txtBloq, 1, g_Tam_Pags, archivoSwap);
 
-	//Retardo de SWAP
-	sleep(g_Retardo_Swap);
-
 	return txtBloq;
 }
 
-int setPaginaDeArchivo(int pid, int pagina, char* datos){
+void setPaginaDeArchivo(int pagina, char* datos){
+	char*txtBloq = malloc(g_Tam_Pags+1);
+	long int offset=pagina*g_Tam_Pags;
 
-	bool _trueOcupados(void *elem) {
-		return (((espacio_ocupado*) elem)->pid == pid);
-	}
+	//Rellena el txtBloq que se va a grabar
+	memset(txtBloq,'\0',g_Tam_Pags +1);
+	memcpy(txtBloq, datos, strlen(datos)+1);
 
-	espacio_ocupado *ocupado = malloc(sizeof(espacio_ocupado));
-	ocupado = list_find(listaOcupado, _trueOcupados);
+	fseek(archivoSwap, offset, SEEK_SET);
+	fwrite(txtBloq, sizeof(char), g_Tam_Pags, archivoSwap);
 
-	if(ocupado->paginaInicio+pagina >= g_Cant_Pags){
-		log_info(logger, "Error al escribir archivo SWAP. La pagina %d no existe en el archivo.", ocupado->paginaInicio+pagina);
-		return 0;
-	}else{
-		if(strlen(datos)>g_Tam_Pags){
-			log_info(logger, "Error al escribir archivo SWAP. El dato supera el tamanio de pagina.");
-			return 0;
-		}else{
-
-			char*txtBloq = malloc(g_Tam_Pags+1);
-			long int offset=(ocupado->paginaInicio+pagina)*g_Tam_Pags;
-
-			//Rellena el txtBloq que se va a grabar
-			memset(txtBloq,'\0',g_Tam_Pags +1);
-			memcpy(txtBloq, datos, strlen(datos)+1);
-
-			fseek(archivoSwap, offset, SEEK_SET);
-			fwrite(txtBloq, sizeof(char), g_Tam_Pags, archivoSwap);
-
-			free(txtBloq);
-
-			//Retardo de SWAP
-			sleep(g_Retardo_Swap);
-
-			log_info(logger, "ESCRITURA REALIZADA. PID: %d, Nro de Pagina: %d, Nro byte inicial: %d, Tamanio: %d, Contenido: %s", pid, pagina, ocupado->paginaInicio*g_Tam_Pags, strlen(datos),datos);
-
-			return 1;
-		}
-	}
+	free(txtBloq);
 }
 
 void abrirArchivoParticionSwap(){
@@ -311,7 +300,7 @@ void compactar(){
 	int espacioTotalOcupado=0;
 	int index=0;
 
-	int inicioAnterior=1;
+	int inicioAnterior=0;
 	int cantPaginasAnterior=0;
 
 	espacio_libre *libre = malloc(sizeof(espacio_libre));
@@ -330,6 +319,8 @@ void compactar(){
 	while(ocupado!=NULL){
 		espacioTotalOcupado = espacioTotalOcupado + ocupado->cantidadPaginas;
 
+		swapearPaginas(ocupado->paginaInicio, ocupado->cantidadPaginas, (inicioAnterior+cantPaginasAnterior));
+
 		ocupado->paginaInicio = inicioAnterior + cantPaginasAnterior;
 
 		inicioAnterior = ocupado->paginaInicio;
@@ -345,6 +336,21 @@ void compactar(){
 
 	agregarElementoALibres(espacioTotalOcupado, espacioTotalLibre);
 
+}
+
+void swapearPaginas(int inicioOriginal, int cantPagsOriginal, int inicioNuevo){
+
+	if(inicioOriginal!=inicioNuevo){
+		int c=0;
+		char*datos = string_new();
+
+		for(c=inicioOriginal;c<(inicioOriginal+cantPagsOriginal);c++){
+			datos = getPaginaDeArchivo(c);
+			setPaginaDeArchivo(inicioNuevo, datos);
+			quitarPaginaDeArchivo(c);
+			inicioNuevo++;
+		}
+	}
 }
 
 void agregarProcesoYActualizarListas(int pid, int inicio, int paginas){
@@ -412,14 +418,6 @@ int hayLugarLibreSinCompactar(int paginasNecesarias){
 		return libre->paginaInicio;
 	}
 }
-
-/*int tieneEspacio(int paginas, int cantPaginas){
-	if (palibreginas >= cantPaginas){
-		return 1;
-	}else{
-		return 0;
-	}
-}*/
 
 espacio_libre *crearElementoLibre(int inicio, int paginas){
 	espacio_libre *libre = malloc(sizeof(espacio_libre));
@@ -626,6 +624,8 @@ char *leerPagina(int pid, int pagina){
 			string_append(&lectura,"0");
 		}else{
 			string_append(&lectura,getPaginaDeArchivo(ocupado->paginaInicio+pagina));
+			//Retardo de SWAP
+			sleep(g_Retardo_Swap);
 			log_info(logger, "LECTURA PAGINA. PID: %d, Nro de Pagina: %d, Nro byte inicial: %d, Tamanio: %d, Contenido: %s", pid, pagina, ocupado->paginaInicio*g_Tam_Pags, strlen(lectura),lectura);
 		}
 	}
@@ -667,6 +667,35 @@ char* informarLecturaPagina(char* buffer){
 	return msg;
 }
 
+int escribirPagina(int pid, int pagina, char* datos){
+	bool _trueOcupados(void *elem) {
+			return (((espacio_ocupado*) elem)->pid == pid);
+		}
+
+		espacio_ocupado *ocupado = malloc(sizeof(espacio_ocupado));
+		ocupado = list_find(listaOcupado, _trueOcupados);
+
+		if(ocupado->paginaInicio+pagina >= g_Cant_Pags){
+			log_info(logger, "Error al escribir archivo SWAP. La pagina %d no existe en el archivo.", ocupado->paginaInicio+pagina);
+			return 0;
+		}else{
+			if(strlen(datos)>g_Tam_Pags){
+				log_info(logger, "Error al escribir archivo SWAP. El dato supera el tamanio de pagina.");
+				return 0;
+			}else{
+
+				setPaginaDeArchivo(ocupado->paginaInicio+pagina, datos);
+
+				//Retardo de SWAP
+				sleep(g_Retardo_Swap);
+
+				log_info(logger, "ESCRITURA REALIZADA. PID: %d, Nro de Pagina: %d, Nro byte inicial: %d, Tamanio: %d, Contenido: %s", pid, pagina, ocupado->paginaInicio*g_Tam_Pags, strlen(datos),datos);
+
+				return 1;
+			}
+		}
+}
+
 char* informarEscrituraPagina(char* buffer){
 	char *pid, *nroPagina, *contenido;
 	int posActual = 2;
@@ -681,7 +710,7 @@ char* informarEscrituraPagina(char* buffer){
 
 	contenido = DigitosNombreArchivo(buffer, &posActual);
 
-	resultado = setPaginaDeArchivo(CharAToInt(pid), CharAToInt(nroPagina), contenido);
+	resultado = escribirPagina(CharAToInt(pid), CharAToInt(nroPagina), contenido);
 
 	// 43 + pid + pagina + contenido ==> OK
 	// 43 + pid + 0 ==> FALLO
@@ -816,7 +845,7 @@ void LevantarConfig() {
 		if (config_has_property(config, "RETARDO_SWAP")) {
 			g_Retardo_Swap = config_get_int_value(config, "RETARDO_SWAP");
 		} else{
-			Error("No se pudo leer el parametro RETARDO_COMPACTACION");
+			Error("No se pudo leer el parametro RETARDO_SWAP");
 		}
 		// Obtenemos el tiempo de retardo que va a llevar la compactacion
 		if (config_has_property(config, "RETARDO_COMPACTACION")) {
