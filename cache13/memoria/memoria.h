@@ -72,7 +72,7 @@ typedef struct{
 	int modificado;
 } entrada_tablaPags;
 
-entrada_tablaPags *entradaTablaPags_create(int frame, int P, int M) {
+entrada_tablaPags *entradaTablaPags_create() {
 	entrada_tablaPags *new = malloc(sizeof(entrada_tablaPags));
 	new->frame = 0;
 	new->presenteEnMemoria = 0;

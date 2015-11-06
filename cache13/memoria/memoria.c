@@ -616,7 +616,7 @@ void informarFinDelProceso(char* buffer){
 void informarInicio(char* buffer){
 	char *el_Puerto, *pid, *cant_pag;
 	int posActual = 2;
-
+	int i;
 	printf("Inicio:\n");
 
 	el_Puerto = DigitosNombreArchivo(buffer, &posActual);
@@ -632,12 +632,17 @@ void informarInicio(char* buffer){
 	t_cpu* la_cpu =buscarCPUporPuerto(el_Puerto);
 	//Busco la CPU por el puerto
 	la_cpu->procesoActivo=CharAToInt(pid);
-	//Le agreguo el proceso activo correspondiente.
+	//Le agrego el proceso activo correspondiente.
 
 	//AGREGO PROCESO A TABLAS DE LA MEMORIA
+	entrada_tablaProcesos * unProceso = entradaTablaProcesos_create(CharAToInt(pid));
 
-	list_add(lista_procesos,unProceso);
-
+	for (i = 0; i < CharAToInt(cant_pag); i++){
+		entrada_tablaPags * entrada = entradaTablaPags_create();
+		list_add(unProceso->tablaPags, entrada);
+		};
+	list_add(lista_procesos, unProceso);
+	printf("\n PROCESO %d AGREGADO CON %d PAGS\n", unProceso->pid,list_size(unProceso->tablaPags));
 	sem_wait(&sem_swap);
 	inicioProcesoSwap(CharAToInt(pid),CharAToInt(cant_pag));
 	sem_post(&sem_swap);
@@ -1009,7 +1014,7 @@ void reservarMemoria(t_frame * marcos, int g_Cant_Marcos){
 	t_frame * frame;
 	frame = frame_create(0,0,NULL);
 	int i;
-	for (i=0; i<=g_Cant_Marcos; i++){
+	for (i=0; i<g_Cant_Marcos; i++){
 	marcos[i] = * frame;
 	}
 	}
