@@ -511,16 +511,21 @@ int AtiendeCliente(void * arg) {
 							printf("\nCPU Buffer RECIBIDO: %s\n",buffer);
 							funcion = ObtenerComandoMSJ(buffer+1);
 							if(funcion==1){
+								//buffer="";
+								//char* buffer1 = string_new();
+								//string_append(&buffer1,"21113273/home/utnso/workspace/tp-2015-2c-residente/cache13/planificador/corto.cod11121112345678909");
 								//printf("Funcion de Ejecucion\n");
-								//printf("Buffer : %s\n",buffer);
+								//printf("Buffer : %s\n",buffer1);
 								//printf("PID %d\n",obtenerPID(buffer));
 								//printf("Direccion: %s\n",obtenerDireccion(buffer));
 								//printf("Instruccion: %s\n",obtenerProximaInstruccion(buffer));
+								//printf("QUANTUM: %d\n",CharAToInt(obtenerQuantum(buffer)));
+
 								t_global* la_global = buscarGlobalPorPuerto(puerto);
 								la_global->pidGlobal=obtenerPID(buffer);
 
 								//Asigno el pid que se va a ejecutar a la lista global
-								abrirArchivo(obtenerDireccion(buffer),CharAToInt(obtenerProximaInstruccion(buffer)),obtenerPID(buffer));
+								abrirArchivo(obtenerDireccion(buffer),CharAToInt(obtenerProximaInstruccion(buffer)),obtenerPID(buffer),CharAToInt(obtenerQuantum(buffer)));
 
 							}
 							if(funcion==2){
@@ -605,7 +610,7 @@ int AtiendeCliente(void * arg) {
 	return code;
 }
 
-void abrirArchivo(char* direccion, int instruccionAEjecutar, int pid){
+void abrirArchivo(char* direccion, int instruccionAEjecutar, int pid, int quantum){
 FILE *archivoMcod;
 archivoMcod = fopen(direccion,"r");
 char *line = NULL;
@@ -617,10 +622,13 @@ int linea = 1;
 int error =0;
 int fin =0;
 int ent_sal=0;
+int pasos = 0;
+
 while ((getline(&line, &len, archivoMcod) != -1) && (linea!=instruccionAEjecutar)) {
 	linea++;
 }
 do{
+	pasos++;
 	t_global* la_global = buscarGlobalPorPuerto(puerto);
 	//Busco en la lista por puerto, y le resto uno al semaforo para que se bloquee esperando la respuesta de memoria
 	sem_wait(&(la_global->sProxInstruccion));
@@ -673,14 +681,19 @@ if (strcmp(comando[0], "finalizar") == 0) {
 }
 
 error = (la_global->finError);
-}while((getline(&line, &len, archivoMcod) != -1) && (error==0)&& (fin==0) && (ent_sal==0)); //Fin de archivo, Error, o Finalizado. agregar quantum
+
+}while((getline(&line, &len, archivoMcod) != -1) && (error==0)&& (fin==0) && (ent_sal==0) && (pasos!=quantum)); //Fin de archivo, Error,Finalizado, Entrada/Salida, Quantum
 
 if(error==1){
 	finalizarPlanificador();
 }
-if(ent_sal==1){
-	//enviar msj a memoria para avisar que termine la rafaga a memoria
-	finRafaga(pid);
+//if(ent_sal==1){
+//	//enviar msj a memoria para avisar que termine la rafaga a memoria
+//	finRafaga(pid);
+//}
+if(pasos==quantum){
+	finQuantum(pid);
+	//Si es FIFO (Y no RR) entonces quantum vale 0, y la variable pasos al ingresar al DO ya vale 1, por lo tanto nunca va a ser igual (en el caso de FIFO)
 }
 
 fclose(archivoMcod);
@@ -691,6 +704,29 @@ fclose(archivoMcod);
 int finRafaga(int pid){
 	printf("\n\n !!!!se utiliza la funcion finalizar momentaneamente!!! \n\n");
 	return finalizar(pid); //momentaneamnete usamos esta funcion. ojo, el PID no debe terminar en memoria.
+}
+
+int finQuantum(int pid){
+	int socket_Plani;
+	conectarPlanificador(&socket_Plani);
+	//13+puerto+pid+TiempoBloqueado+CantIntrucciones+Resultados
+	char* buffer = string_new();
+	t_global* la_global = buscarGlobalPorPuerto(puerto);
+
+	string_append(&buffer,"14");
+	string_append(&buffer,obtenerSubBuffer(string_itoa(puerto)));
+	string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
+	string_append(&buffer,obtenerSubBuffer(string_itoa(la_global->instrucRealizadasGlobal)));
+	string_append(&buffer,obtenerSubBuffer(la_global->resultado));
+	printf("(Quantum) ENVIADO a PLANIFICADOR: %s\n",buffer);
+
+	//Reinicio las variables del hilo:
+	la_global->instrucRealizadasGlobal=0;
+	la_global->finError =0;
+	la_global->resultado=string_new();
+
+	//AGREGAR RESULTADO PARCIAL
+	return EnviarDatos(socket_Plani, buffer,strlen(buffer));
 }
 
 int iniciar(int paginas, int pid){
@@ -804,6 +840,34 @@ int devolverValorNumericoArchivo(char caracter,int numero){
 		}
 	}
 return numero;
+}
+
+char* obtenerQuantum(char* buffer){
+
+	int cantDigPID, cantDigDIR, cantDIR,posicion,cantPID,cantDigProxInt,cantProxInt,cantDigQuantum,cantQuantum;
+	int j=0,i=0,x=0;
+	char *direccion;
+
+	cantDigPID = ObtenerComandoMSJ(buffer + 2);
+	cantPID = ObtenerTamanio(buffer,3,cantDigPID);
+	cantDigDIR = ObtenerComandoMSJ(buffer + 2 + cantDigPID + cantPID + 1);
+	cantDIR = ObtenerTamanio(buffer,3 + cantDigPID + cantPID + 1,cantDigDIR);
+	cantDigProxInt = ObtenerComandoMSJ(buffer + 2 + cantDigPID + cantPID + cantDigDIR + cantDIR + 2);
+	cantProxInt = ObtenerTamanio(buffer,3 + cantDigPID + cantPID + cantDIR + cantDigDIR + 2,cantDigProxInt);
+
+	cantDigQuantum = ObtenerComandoMSJ(buffer + 2 + cantDigPID + cantPID + cantDigDIR + cantDIR + cantDigProxInt + cantProxInt + 3);
+	cantQuantum = ObtenerTamanio(buffer,3 + cantDigPID + cantPID + cantDIR + cantDigDIR + cantDigProxInt + cantProxInt + 3,cantDigQuantum);
+	posicion= 2 + cantDigPID + 1 + cantPID + cantDIR + cantDigDIR + 1 + cantDigProxInt + cantProxInt + 1 + cantDigQuantum + 1;
+	printf("cantDigQuantum %d  \n",cantDigQuantum);
+	printf("cantQuantum %d  \n",cantQuantum);
+	printf("posicion %d  \n",posicion);
+	direccion = malloc(cantQuantum + 1);
+		for (j = posicion + i; j < posicion + i + cantQuantum; j++) {
+			direccion[x] = buffer[j];
+			x++;
+		}
+	direccion[x] = '\0';
+	return direccion;
 }
 
 char* obtenerProximaInstruccion(char* buffer){

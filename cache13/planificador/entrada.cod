@@ -1,0 +1,16 @@
+iniciar 10;
+escribir 0 "Hola":
+escribir 9 "Chau";
+escribir 4 "Paus";
+leer 0;
+leer 1;
+leer 2;
+leer 3;
+leer 4;
+entrada-salida 10;
+leer 9;
+leer 8;
+leer 7;
+leer 6;
+leer 5;
+finalizar;
