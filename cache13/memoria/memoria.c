@@ -5,11 +5,21 @@ int main(int argv, char** argc) {
 	//int iThreadOrquestador;
 	sem_init(&sem_swap,0,1); //semaforo para conectarse con swap
 	lista_cpu=list_create();  //Creo la lista de las cpu.
-	//Archivo de Log
-	logger = log_create(NOMBRE_ARCHIVO_LOG, "memoria", true, LOG_LEVEL_TRACE);
+	lista_procesos=list_create(); //Lista de procesos en memoria
+
 
 	// Levantamos el archivo de configuracion.
 	LevantarConfig();
+
+	t_frame marcos[g_Cant_Marcos];
+	// Creamos los frames
+	reservarMemoria(marcos, g_Cant_Marcos);
+
+
+	//Archivo de Log
+	logger = log_create(NOMBRE_ARCHIVO_LOG, "memoria", true, LOG_LEVEL_TRACE);
+
+
 
 	ConectarseConSwap(g_Puerto_Memoria);
 
@@ -624,6 +634,10 @@ void informarInicio(char* buffer){
 	la_cpu->procesoActivo=CharAToInt(pid);
 	//Le agreguo el proceso activo correspondiente.
 
+	//AGREGO PROCESO A TABLAS DE LA MEMORIA
+
+	list_add(lista_procesos,unProceso);
+
 	sem_wait(&sem_swap);
 	inicioProcesoSwap(CharAToInt(pid),CharAToInt(cant_pag));
 	sem_post(&sem_swap);
@@ -989,4 +1003,14 @@ t_cpu* buscarCPUporPuerto(char* puerto) {
 	//t_tlb TLB;
 //	return TLB;
 //}
+
+
+void reservarMemoria(t_frame * marcos, int g_Cant_Marcos){
+	t_frame * frame;
+	frame = frame_create(0,0,NULL);
+	int i;
+	for (i=0; i<=g_Cant_Marcos; i++){
+	marcos[i] = * frame;
+	}
+	}
 

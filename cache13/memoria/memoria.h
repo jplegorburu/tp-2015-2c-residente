@@ -46,15 +46,60 @@ char* g_Tlb_Habilitada;
 int g_Retardo_Memoria;
 int g_Ejecutando = 1;						// - Bandera que controla la ejecución o no del programa. Si está en 0 el programa se cierra.
 t_list* lista_cpu; 							//Lista de Cpus conectadas.
+t_list* lista_procesos;
+
 #define BUFFERSIZE 200
 pthread_t hOrquestadorConexiones;
 int socket_swap;
+
+typedef struct{
+	int pid;
+	int pagina;
+	char * contenido;
+} t_frame;
+
+t_frame * frame_create(int pid, int pag, char * contenido) {
+	t_frame *new = malloc(g_Tam_Marcos);
+	new->pid = 0;
+	new->pagina = 0;
+	new->contenido = contenido;
+	return new;
+}
+
+typedef struct{
+	int frame;
+	int presenteEnMemoria;
+	int modificado;
+} entrada_tablaPags;
+
+entrada_tablaPags *entradaTablaPags_create(int frame, int P, int M) {
+	entrada_tablaPags *new = malloc(sizeof(entrada_tablaPags));
+	new->frame = 0;
+	new->presenteEnMemoria = 0;
+	new->modificado = 0;
+	return new;
+}
+
+typedef struct{
+	int pid;
+	t_list * tablaPags;
+}entrada_tablaProcesos;
+
+entrada_tablaProcesos *entradaTablaProcesos_create(int pid) {
+	entrada_tablaProcesos *new = malloc(sizeof(entrada_tablaProcesos));
+	new->pid = pid;
+	new->tablaPags = list_create();
+	return new;
+}
+
+
 
 typedef struct {
 	char * ip;
 	char * puerto;
 	int procesoActivo;
 } t_cpu;
+
 
 t_cpu *cpu_create(char *ipCpu, char* puertoCpu) {
 	t_cpu *new = malloc(sizeof(t_cpu));
@@ -115,9 +160,10 @@ void resultadoFinSwap(char* buffer);
 int conectarConCpu(int *socket_cpu, char*ip, char*puerto);
 t_cpu* buscarCPUporPid(int pid);
 t_cpu* buscarCPUporPuerto(char* puerto);
+t_frame marcos;
 int finProcesoCpu(char*ip, char*puerto);
 int inicioProcesoCpu(char*ip, char*puerto,char* resultado);
 int escribirCpu(char*ip, char*puerto,char* resultado);
 int leerCpu(char*ip, char*puerto,char* pagina,char* contenido);
 void mensajeDeSwap(char * buffer);
-
+void reservarMemoria(t_frame * marcos, int g_Cant_Marcos);
