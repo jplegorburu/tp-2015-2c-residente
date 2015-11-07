@@ -52,28 +52,37 @@ t_list* lista_procesos;
 pthread_t hOrquestadorConexiones;
 int socket_swap;
 
+
+
+
+// TIPOS //
+typedef enum {
+	CantidadArgumentosIncorrecta,
+	NoSePudoAbrirConfig,
+	NoSePuedeObtenerPuerto,
+	NoSePuedeObtenerNodos,
+	NosePuedeCrearHilo,
+	OtroError,
+} t_error;							//Tipo error
+
 typedef struct{
 	int pid;
 	int pagina;
 	char * contenido;
 } t_frame;
 
-t_frame * frame_create(int pid, int pag, char * contenido) {
-	t_frame *new = malloc(g_Tam_Marcos);
-	new->pid = 0;
-	new->pagina = 0;
-	new->contenido = contenido;
-	return new;
-}
+
 
 typedef struct{
+	int pagN;
 	int frame;
 	int presenteEnMemoria;
 	int modificado;
 } entrada_tablaPags;
 
-entrada_tablaPags *entradaTablaPags_create() {
+entrada_tablaPags *entradaTablaPags_create(int i) {
 	entrada_tablaPags *new = malloc(sizeof(entrada_tablaPags));
+	new->pagN = i;
 	new->frame = 0;
 	new->presenteEnMemoria = 0;
 	new->modificado = 0;
@@ -83,15 +92,16 @@ entrada_tablaPags *entradaTablaPags_create() {
 typedef struct{
 	int pid;
 	t_list * tablaPags;
+	int framesAsignados;
 }entrada_tablaProcesos;
 
 entrada_tablaProcesos *entradaTablaProcesos_create(int pid) {
 	entrada_tablaProcesos *new = malloc(sizeof(entrada_tablaProcesos));
 	new->pid = pid;
 	new->tablaPags = list_create();
+	new->framesAsignados = 0;
 	return new;
 }
-
 
 
 typedef struct {
@@ -112,17 +122,6 @@ t_cpu *cpu_create(char *ipCpu, char* puertoCpu) {
 void cpu_destroy(t_cpu* self) {
 	free(self);
 }
-
-
-// TIPOS //
-typedef enum {
-	CantidadArgumentosIncorrecta,
-	NoSePudoAbrirConfig,
-	NoSePuedeObtenerPuerto,
-	NoSePuedeObtenerNodos,
-	NosePuedeCrearHilo,
-	OtroError,
-} t_error;							//Tipo error
 
 
 typedef struct {
@@ -167,3 +166,5 @@ int escribirCpu(char*ip, char*puerto,char* resultado);
 int leerCpu(char*ip, char*puerto,char* pagina,char* contenido);
 void mensajeDeSwap(char * buffer);
 void reservarMemoria(t_frame * marcos, int g_Cant_Marcos);
+entrada_tablaProcesos * buscarPorId(int id);
+entrada_tablaPags * buscarPagina(entrada_tablaProcesos * proc, int numPag);

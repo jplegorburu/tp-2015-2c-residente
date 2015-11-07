@@ -626,7 +626,7 @@ void informarInicio(char* buffer){
 	printf("pid:%s\n", pid);
 
 	cant_pag = DigitosNombreArchivo(buffer, &posActual);
-		printf("Cantidad paginas:%s\n", cant_pag);
+	printf("Cantidad paginas:%s\n", cant_pag);
 
 	//Agrego el proceso a la cpu correspondiente
 	t_cpu* la_cpu =buscarCPUporPuerto(el_Puerto);
@@ -638,11 +638,12 @@ void informarInicio(char* buffer){
 	entrada_tablaProcesos * unProceso = entradaTablaProcesos_create(CharAToInt(pid));
 
 	for (i = 0; i < CharAToInt(cant_pag); i++){
-		entrada_tablaPags * entrada = entradaTablaPags_create();
+		entrada_tablaPags * entrada = entradaTablaPags_create(i);
 		list_add(unProceso->tablaPags, entrada);
 		};
 	list_add(lista_procesos, unProceso);
 	printf("\n PROCESO %d AGREGADO CON %d PAGS\n", unProceso->pid,list_size(unProceso->tablaPags));
+
 	sem_wait(&sem_swap);
 	inicioProcesoSwap(CharAToInt(pid),CharAToInt(cant_pag));
 	sem_post(&sem_swap);
@@ -662,16 +663,39 @@ void informarLeer(char* buffer){
 	printf("pid:%s\n", pid);
 
 	num_pag = DigitosNombreArchivo(buffer, &posActual);
-		printf("Número pagina:%s\n", num_pag);
+	printf("Número pagina:%s\n", num_pag);
 
 	//Agrego el proceso a la cpu correspondiente
 	t_cpu* la_cpu =buscarCPUporPuerto(el_Puerto);
 	//Busco la CPU por el puerto
 	la_cpu->procesoActivo=CharAToInt(pid);
 	//Le agreguo el proceso activo correspondiente.
-	sem_wait(&sem_swap);
-	leerSwap(CharAToInt(pid), CharAToInt(num_pag));
-	sem_post(&sem_swap);
+
+	//TODO:PRIMERO BUSCA EN TLB
+
+	//SI NO ENCUENTRA AHI....
+	//Coseguimos la entrada de la tabla de procesos:
+	entrada_tablaProcesos * proc = buscarPorId(CharAToInt(pid));
+	//Conseguimos la entrada de la tabla de paginas:
+	entrada_tablaPags * entradaTablaPag = buscarPagina(proc, CharAToInt(num_pag));
+
+
+	if(entradaTablaPag->presenteEnMemoria==1){
+		int marcoN = entradaTablaPag->frame;
+		t_frame marcos[marcoN];
+		char * content = marcos[marcoN].contenido;
+
+		leerCpu(la_cpu->ip,la_cpu->puerto,num_pag, content);
+	}
+	else{
+		sem_wait(&sem_swap);
+		leerSwap(CharAToInt(pid), CharAToInt(num_pag));
+		sem_post(&sem_swap);
+	}
+
+//	sem_wait(&sem_swap);
+//	leerSwap(CharAToInt(pid), CharAToInt(num_pag));
+//	sem_post(&sem_swap);
 }
 
 void informarEscribir(char* buffer){
@@ -1011,11 +1035,30 @@ t_cpu* buscarCPUporPuerto(char* puerto) {
 
 
 void reservarMemoria(t_frame * marcos, int g_Cant_Marcos){
-	t_frame * frame;
-	frame = frame_create(0,0,NULL);
 	int i;
 	for (i=0; i<g_Cant_Marcos; i++){
-	marcos[i] = * frame;
+	marcos[i].pid=0;
+	marcos[i].pagina=0;
+	marcos[i].contenido=NULL;
 	}
 	}
 
+entrada_tablaProcesos * buscarPorId(int id){
+	bool _true(void *elem) {
+			return (((entrada_tablaProcesos*) elem)->pid == id);
+		}
+	entrada_tablaProcesos * proceso;
+	proceso = list_find(lista_procesos, _true);
+
+	return proceso;
+	}
+
+entrada_tablaPags * buscarPagina(entrada_tablaProcesos * proc, int numPag){
+	bool _true(void *elem) {
+			return (((entrada_tablaPags*) elem)->pagN == numPag);
+		}
+	entrada_tablaPags * entradaTablaPag;
+	entradaTablaPag = list_find(proc->tablaPags, _true);
+
+	return entradaTablaPag;
+	}
