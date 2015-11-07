@@ -1,19 +1,21 @@
 #include "memoria.h"
 
+
 int main(int argv, char** argc) {
 
 	//int iThreadOrquestador;
 	sem_init(&sem_swap,0,1); //semaforo para conectarse con swap
 	lista_cpu=list_create();  //Creo la lista de las cpu.
 	lista_procesos=list_create(); //Lista de procesos en memoria
-
+	marcos = list_create();
 
 	// Levantamos el archivo de configuracion.
 	LevantarConfig();
 
-	t_frame marcos[g_Cant_Marcos];
+
 	// Creamos los frames
 	reservarMemoria(marcos, g_Cant_Marcos);
+
 
 
 	//Archivo de Log
@@ -362,7 +364,7 @@ void mensajeDeSwap(char * buffer){
 		int funcion;
 		int error;
 
-		 //PARA LOS MSJs que manda SWAP // TODO:pasarlo adentro de los case de arriba
+		 //PARA LOS MSJs que manda SWAP //
 		funcion = ObtenerComandoMSJ(buffer+1);
 								   // switch con los distintos codigos de mensaje
 		switch (funcion){
@@ -669,7 +671,7 @@ void informarLeer(char* buffer){
 	t_cpu* la_cpu =buscarCPUporPuerto(el_Puerto);
 	//Busco la CPU por el puerto
 	la_cpu->procesoActivo=CharAToInt(pid);
-	//Le agreguo el proceso activo correspondiente.
+	//Le agrego el proceso activo correspondiente.
 
 	//TODO:PRIMERO BUSCA EN TLB
 
@@ -678,18 +680,20 @@ void informarLeer(char* buffer){
 	entrada_tablaProcesos * proc = buscarPorId(CharAToInt(pid));
 	//Conseguimos la entrada de la tabla de paginas:
 	entrada_tablaPags * entradaTablaPag = buscarPagina(proc, CharAToInt(num_pag));
-
-
+	t_frame marcos[entradaTablaPag->frame];
 	if(entradaTablaPag->presenteEnMemoria==1){
-		int marcoN = entradaTablaPag->frame;
-		t_frame marcos[marcoN];
-		char * content = marcos[marcoN].contenido;
+
+		//t_frame marcos[entradaTablaPag->frame];
+		char * content = marcos[entradaTablaPag->frame].contenido;
+		printf("\n LEYENDO DE MP PID %d, PAG %d, CONTENIIDO %s\n", marcos[entradaTablaPag->frame].pid, marcos[entradaTablaPag->frame].pagina, marcos[entradaTablaPag->frame].contenido);
 
 		leerCpu(la_cpu->ip,la_cpu->puerto,num_pag, content);
 	}
 	else{
 		sem_wait(&sem_swap);
 		leerSwap(CharAToInt(pid), CharAToInt(num_pag));
+		//TODO:CARGARLA EN MP
+
 		sem_post(&sem_swap);
 	}
 
@@ -697,6 +701,7 @@ void informarLeer(char* buffer){
 //	leerSwap(CharAToInt(pid), CharAToInt(num_pag));
 //	sem_post(&sem_swap);
 }
+
 
 void informarEscribir(char* buffer){
 	char *el_Puerto, *pid, *num_pag, *contenido;
@@ -856,6 +861,24 @@ void resultadoLecturaSwap(char* buffer){
 		printf("PAGINA:%s\n", pagina);
 	contenido = DigitosNombreArchivo(buffer, &posActual);
 		printf("CONTENIDO:%s\n", contenido);
+	//CARGO PAGINA EN MP
+		entrada_tablaProcesos * proc = buscarPorId(CharAToInt(pid));
+		//Conseguimos la entrada de la tabla de paginas:
+		entrada_tablaPags * entradaTablaPag = buscarPagina(proc, CharAToInt(pagina));
+		if(proc->framesAsignados<=g_Max_Marcos_Proc){
+			printf("\n Cargando Pagina a MP... \n");
+			t_frame * marcoLibre;
+			marcoLibre = buscarFrameLibre(marcos);
+//			t_frame marcos[pos]; ESTO NO SIRVE
+			marcoLibre->pid=CharAToInt(pid);
+			marcoLibre->pagina = CharAToInt(pagina);
+			marcoLibre->contenido=contenido;
+//
+			entradaTablaPag->frame=marcoLibre->frameNro;
+			entradaTablaPag->presenteEnMemoria=1;
+			printf("\n el proceso %d, pagina %d, CONTENIDO CARGADO %s \n", marcoLibre->pid,marcoLibre->pagina, marcoLibre->contenido);
+
+		}
 	//Busco la CPU en la lista donde se esta ejecutando el proceso.
 	t_cpu* la_cpu = buscarCPUporPid(CharAToInt(pid));
 	leerCpu(la_cpu->ip,la_cpu->puerto,pagina, contenido);
@@ -1034,12 +1057,12 @@ t_cpu* buscarCPUporPuerto(char* puerto) {
 //}
 
 
-void reservarMemoria(t_frame * marcos, int g_Cant_Marcos){
+void reservarMemoria(t_list * marcos, int g_Cant_Marcos){
 	int i;
 	for (i=0; i<g_Cant_Marcos; i++){
-	marcos[i].pid=0;
-	marcos[i].pagina=0;
-	marcos[i].contenido=NULL;
+	t_frame * marcoVacio;
+	marcoVacio = frame_create(g_Tam_Marcos,i);
+	list_add(marcos, marcoVacio);
 	}
 	}
 
@@ -1062,3 +1085,16 @@ entrada_tablaPags * buscarPagina(entrada_tablaProcesos * proc, int numPag){
 
 	return entradaTablaPag;
 	}
+
+t_frame * buscarFrameLibre(t_list * marcos){
+	bool _true(void *elem) {
+				return (((t_frame*) elem)->pid == 0);
+			}
+		t_frame * marcoLibre;
+		marcoLibre = list_find(marcos, _true);
+
+		return marcoLibre;
+}
+
+
+
