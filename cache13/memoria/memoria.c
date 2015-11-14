@@ -15,8 +15,9 @@ int main(int argv, char** argc) {
 
 	// Creamos los frames
 	reservarMemoria(marcos, g_Cant_Marcos);
+	printf("\n LA LISTA TIENE %d MARCOS\n",list_size(marcos));
 
-
+	memoriaPrincipal = malloc(g_Cant_Marcos*g_Tam_Marcos); //Reservo la porcion de memoria donde se van a escribir y leer los marcos.
 
 	//Archivo de Log
 	logger = log_create(NOMBRE_ARCHIVO_LOG, "memoria", true, LOG_LEVEL_TRACE);
@@ -1061,12 +1062,10 @@ t_cpu* buscarCPUporPuerto(char* puerto) {
 //}
 
 
-void reservarMemoria(t_list * marcos, int g_Cant_Marcos){
+void reservarMemoria(t_list * marcos, int cant_marcos){
 	int i;
-	for (i=0; i<g_Cant_Marcos; i++){
-	t_frame * marcoVacio;
-	marcoVacio = frame_create(g_Tam_Marcos,i);
-	list_add(marcos, marcoVacio);
+	for (i=0; i<cant_marcos; i++){
+	list_add(marcos, frame_create(g_Tam_Marcos,i));
 	}
 	}
 

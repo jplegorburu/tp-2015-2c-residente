@@ -51,7 +51,7 @@ t_list* marcos;
 #define BUFFERSIZE 200
 pthread_t hOrquestadorConexiones;
 int socket_swap;
-
+char* memoriaPrincipal;
 
 
 
