@@ -55,6 +55,8 @@ char* g_Algoritmo_Planificador;
 int g_Quantum_Planificador;
 int g_Ejecutando = 1;						// - Bandera que controla la ejecución o no del programa. Si está en 0 el programa se cierra.
 int pidProcesos = 0;							//Variable global para ir asignandole pid a los procesos.
+sem_t sEntradaSalida;
+
 // TIPOS //
 typedef enum {
 	CantidadArgumentosIncorrecta,

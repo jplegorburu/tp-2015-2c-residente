@@ -869,10 +869,14 @@ void resultadoLecturaSwap(char* buffer){
 			printf("\n Cargando Pagina a MP... \n");
 			t_frame * marcoLibre;
 			marcoLibre = buscarFrameLibre(marcos);
+			if(marcoLibre==NULL){
+				printf("No hay marco libre");
+			}
 //			t_frame marcos[pos]; ESTO NO SIRVE
 			marcoLibre->pid=CharAToInt(pid);
 			marcoLibre->pagina = CharAToInt(pagina);
-			marcoLibre->contenido=contenido;
+		//	marcoLibre->contenido=contenido;
+			printf("LLEGUE ACA !");
 //
 			entradaTablaPag->frame=marcoLibre->frameNro;
 			entradaTablaPag->presenteEnMemoria=1;
@@ -1087,12 +1091,12 @@ entrada_tablaPags * buscarPagina(entrada_tablaProcesos * proc, int numPag){
 	}
 
 t_frame * buscarFrameLibre(t_list * marcos){
+	t_frame* marcoLibre = malloc(sizeof(t_frame));
 	bool _true(void *elem) {
-				return (((t_frame*) elem)->pid == 0);
+				return (((t_frame*) elem)->usado == 0);
 			}
-		t_frame * marcoLibre;
 		marcoLibre = list_find(marcos, _true);
-
+		//marcoLibre->usado=1;
 		return marcoLibre;
 }
 

@@ -1,4 +1,3 @@
 iniciar 2;
-leer 0;
-leer 1;
+entrada-salida 20;
 finalizar;

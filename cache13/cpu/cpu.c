@@ -668,6 +668,7 @@ if (strcmp(comando[0], "entrada-salida") == 0) {
 	if(entradaSalida(CharAToInt(comando[1]),pid)==-1)
 		printf("Error, no se pudo leer");
 	ent_sal=1;
+	sem_post(&(la_global->sProxInstruccion)); //Entrada y salida no va a memoria entonces por eso lo libero aca.
 	sleep(g_Retardo);
 }
 

@@ -3,6 +3,7 @@
 int main(int argv, char** argc) {
 
 	int iThreadConsola, iThreadOrquestador;					//Hilo de consola
+	sem_init(&sEntradaSalida,0,1);
 
 	lista_cpu = list_create();		//Lista de cpus
 	lista_procesos = list_create();		//Lista de procesos.
@@ -401,6 +402,7 @@ int finDeQuantum(char* buffer){
 	procesarInstrucciones(resultadoInstrucciones, CharAToInt(pid),CharAToInt(instrucRealizadas));
 	t_pcb* la_pcb = buscarPCBporPid(CharAToInt(pid));
 	la_pcb->estado=0;
+	la_pcb->proxInst=la_pcb->proxInst+CharAToInt(instrucRealizadas);
 	agregarAColaListos(CharAToInt(pid));
 
 	if(list_size(cola_listos)>0)
@@ -428,7 +430,27 @@ int procesoBloqueado(char* buffer){
 	procesarInstrucciones(resultadoInstrucciones, CharAToInt(pid),CharAToInt(instrucRealizadas));
 	t_pcb* la_pcb = buscarPCBporPid(CharAToInt(pid));
 	la_pcb->estado=2;
-	agregarAColaBloqueados(CharAToInt(pid)); //FALTA implementar como se administra esta cola.
+	la_pcb->proxInst=la_pcb->proxInst+CharAToInt(instrucRealizadas);
+
+	//Tomo el tiempo en que lo agrego a la cola de bloqueados
+	time_t tiempoIngreso;
+	time(&tiempoIngreso);
+	printf("\nEstoy bloqueado por %s segundos\n", tBloqueado);
+	sem_wait(&sEntradaSalida);
+	sleep(CharAToInt(tBloqueado));
+	sem_post(&sEntradaSalida);
+
+	//Tomo el tiempo en el que lo saco de la cola de bloqueados.
+	time_t tiempo;
+	time(&tiempo);
+	double trespuesta = difftime(tiempo,tiempoIngreso);
+	la_pcb->trespuesta = la_pcb->trespuesta + trespuesta;
+	la_pcb->estado=0;
+	agregarAColaListos(CharAToInt(pid));
+
+	if(list_size(cola_listos)>0)
+		planificar();
+
 	return 1;
 
 }

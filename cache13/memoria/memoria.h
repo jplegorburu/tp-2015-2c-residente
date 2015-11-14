@@ -70,15 +70,17 @@ typedef struct{
 	int pid;
 	int pagina;
 	char * contenido;
+	int usado;
 } t_frame;
 
 
-t_frame *frame_create(int g_Tam_Marcos, int nroMarco) {
-	t_frame *new = malloc(g_Tam_Marcos);
+t_frame *frame_create(int tam_marcos, int nroMarco) {
+	t_frame *new = malloc(sizeof(t_frame));
 	new->frameNro = nroMarco;
 	new->pid = 0;
 	new->pagina = 0;
-	new->contenido = NULL;
+	new->contenido = malloc(tam_marcos);
+	new->usado=0;
 	return new;
 }
 
