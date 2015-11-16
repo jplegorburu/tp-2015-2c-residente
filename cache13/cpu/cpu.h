@@ -51,9 +51,11 @@ typedef struct{
 int puerto;
 int pidGlobal;
 int finError;
+int finQuantum;
 int instrucRealizadasGlobal;
 char* resultado; //Resultado de las instrucciones
 sem_t sProxInstruccion;
+sem_t sPlanificador;
 }t_global;
 
 t_global *global_create(int puerto) {
@@ -63,7 +65,9 @@ t_global *global_create(int puerto) {
 	new->instrucRealizadasGlobal = 0;
 	new->resultado = string_new();
 	new->finError =0;
+	new->finQuantum =0;
 	sem_init(&(new->sProxInstruccion),0,1);
+	sem_init(&(new->sPlanificador),0,0);
 	return new;
 }
 

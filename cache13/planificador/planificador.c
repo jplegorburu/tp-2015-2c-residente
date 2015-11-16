@@ -830,7 +830,7 @@ int AtiendeCliente(void * arg) {
 			string_append(&bufferE, obtenerSubBuffer(proceso->ruta));
 			string_append(&bufferE,
 					obtenerSubBuffer(string_itoa(proceso->proxInst)));
-			if((strcmp(g_Algoritmo_Planificador,"FIFO"))){
+			if((strcmp(g_Algoritmo_Planificador,"FIFO"))==0){
 				string_append(&bufferE,obtenerSubBuffer("0"));
 			}else{
 				string_append(&bufferE,obtenerSubBuffer(string_itoa(g_Quantum_Planificador)));

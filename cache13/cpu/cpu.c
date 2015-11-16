@@ -519,7 +519,7 @@ int AtiendeCliente(void * arg) {
 								//printf("PID %d\n",obtenerPID(buffer));
 								//printf("Direccion: %s\n",obtenerDireccion(buffer));
 								//printf("Instruccion: %s\n",obtenerProximaInstruccion(buffer));
-								//printf("QUANTUM: %d\n",CharAToInt(obtenerQuantum(buffer)));
+								printf("QUANTUM: %d\n",CharAToInt(obtenerQuantum(buffer)));
 
 								t_global* la_global = buscarGlobalPorPuerto(puerto);
 								la_global->pidGlobal=obtenerPID(buffer);
@@ -586,6 +586,9 @@ int AtiendeCliente(void * arg) {
 
 							t_global* la_global = buscarGlobalPorPuerto(puerto);
 							sem_post(&(la_global->sProxInstruccion));
+							if(la_global->finQuantum==1){
+								sem_post(&(la_global->sPlanificador));
+							}
 							//Una vez que recibo la respuesta de memoria activo el semaforo para que siga con la siguiente intruccion.
 
 							mensaje="ok";
@@ -635,7 +638,10 @@ do{
 	la_global->instrucRealizadasGlobal++;
 	printf("\n (%d) Nro Inst: %d. RESULTADO PARCIAL: %s\n",la_global->puerto,la_global->instrucRealizadasGlobal, la_global->resultado);
 
-
+	if(pasos==quantum){
+		la_global->finQuantum=1;
+		//para bloquear liberar el semaforo de la ultima instruccion cuando sale por quantum
+	}
 //Le saco el \n final a la linea ingresada
 char **sinBarraN = string_split(line, "\n");
 //Separo el comando y su campo ingresado en caso que tenga.
@@ -692,8 +698,11 @@ if(error==1){
 //	//enviar msj a memoria para avisar que termine la rafaga a memoria
 //	finRafaga(pid);
 //}
-if(pasos==quantum){
+if(pasos==quantum && fin!=1){
+	t_global* la_global = buscarGlobalPorPuerto(puerto);
+	sem_wait(&(la_global->sPlanificador)); //Semaforo para esperar que realice la ultima instruccion.
 	finQuantum(pid);
+
 	//Si es FIFO (Y no RR) entonces quantum vale 0, y la variable pasos al ingresar al DO ya vale 1, por lo tanto nunca va a ser igual (en el caso de FIFO)
 }
 
@@ -724,6 +733,7 @@ int finQuantum(int pid){
 	//Reinicio las variables del hilo:
 	la_global->instrucRealizadasGlobal=0;
 	la_global->finError =0;
+	la_global->finQuantum =0;
 	la_global->resultado=string_new();
 
 	//AGREGAR RESULTADO PARCIAL
