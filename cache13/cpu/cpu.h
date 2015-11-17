@@ -52,6 +52,8 @@ int puerto;
 int pidGlobal;
 int finError;
 int finQuantum;
+int estaEjecutando;
+int porcentajeEjec;
 int instrucRealizadasGlobal;
 char* resultado; //Resultado de las instrucciones
 sem_t sProxInstruccion;
@@ -66,6 +68,8 @@ t_global *global_create(int puerto) {
 	new->resultado = string_new();
 	new->finError =0;
 	new->finQuantum =0;
+	new->estaEjecutando =0;
+	new->porcentajeEjec =0;
 	sem_init(&(new->sProxInstruccion),0,1);
 	sem_init(&(new->sPlanificador),0,0);
 	return new;
@@ -128,3 +132,4 @@ int finRafaga(int pid);
 int escribirPlanificador(char* buffer);
 char* obtenerQuantum(char* buffer);
 int finQuantum(int pid);
+void calcularTiempoEjecucion (void* arg);

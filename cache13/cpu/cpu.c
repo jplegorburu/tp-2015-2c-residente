@@ -9,6 +9,7 @@ int main(int argv, char** argc) {
 	// Levantamos el archivo de configuracion.
 	LevantarConfig();
 	pthread_t hCpu[g_Cant_Hilos]; 			//Hilo de conexion
+	pthread_t hEjec[g_Cant_Hilos]; 			//Hilo de calculo de ejecucion
 	int i = 0;
 
 	//Conectamos con Planificador y con Memoria:
@@ -22,6 +23,15 @@ int main(int argv, char** argc) {
 				iThreadCpu);
 			exit(EXIT_FAILURE);
 		}
+
+	int iThreadEjec = pthread_create(&hEjec[i], NULL,
+			(void*) calcularTiempoEjecucion,(void*) g_Puerto_CPU );
+		if (iThreadEjec) {
+			fprintf(stderr,
+				"Error al crear hilo - pthread_create() return code: %d\n",
+				iThreadEjec);
+			exit(EXIT_FAILURE);
+		}
 		i++;
 		t_global *la_global = global_create(g_Puerto_CPU);
 		list_add(lista_global, la_global);
@@ -30,6 +40,8 @@ int main(int argv, char** argc) {
 
 	for(i=0;i<g_Cant_Hilos;i++){
 		pthread_join(hCpu[i],NULL);
+		pthread_join(hEjec[i],NULL);
+
 	}
 
 	return EXIT_SUCCESS;
@@ -633,6 +645,7 @@ while ((getline(&line, &len, archivoMcod) != -1) && (linea!=instruccionAEjecutar
 do{
 	pasos++;
 	t_global* la_global = buscarGlobalPorPuerto(puerto);
+	la_global->estaEjecutando=1;
 	//Busco en la lista por puerto, y le resto uno al semaforo para que se bloquee esperando la respuesta de memoria
 	sem_wait(&(la_global->sProxInstruccion));
 	la_global->instrucRealizadasGlobal++;
@@ -734,6 +747,7 @@ int finQuantum(int pid){
 	la_global->instrucRealizadasGlobal=0;
 	la_global->finError =0;
 	la_global->finQuantum =0;
+	la_global->estaEjecutando =0;
 	la_global->resultado=string_new();
 
 	//AGREGAR RESULTADO PARCIAL
@@ -800,6 +814,8 @@ int entradaSalida(int tiempo,int pid){
 	//Reinicio las variables del hilo:
 	la_global->instrucRealizadasGlobal=0;
 	la_global->finError =0;
+	la_global->finQuantum =0;
+	la_global->estaEjecutando=0;
 	la_global->resultado=string_new();
 
 	//AGREGAR RESULTADO PARCIAL
@@ -834,6 +850,8 @@ int finalizarPlanificador(){
 
 	la_global->instrucRealizadasGlobal=0;
 	la_global->finError =0;
+	la_global->finQuantum =0;
+	la_global->estaEjecutando =0;
 	//free(la_global->resultado);
 	la_global->resultado=string_new();
 	printf("(FIN) ENVIADO a PLANIFICADOR: %s\n",buffer);
@@ -1015,4 +1033,29 @@ char* DigitosNombreArchivo(char *buffer, int *posicion) {
 	nombreArch[x] = '\0';
 	*posicion = *posicion + i + aux;
 	return nombreArch;
+}
+
+void calcularTiempoEjecucion (void* arg){
+puerto=(int)arg;
+int tiempoEjec=0;
+int segundos = 0;
+while(1){
+	t_global* la_global = buscarGlobalPorPuerto(puerto);
+	//semaforo
+	if(la_global->estaEjecutando==1){
+		tiempoEjec++;
+	}
+	//semaforo
+	sleep(1);
+
+	segundos=segundos+1;
+
+	if (segundos==60){
+	la_global->porcentajeEjec = ((tiempoEjec*100)/segundos);
+	segundos=0;
+	tiempoEjec=0;
+	printf("\nEL PORCENTAJE DE EJECUCION ES: %d porciento\n",la_global->porcentajeEjec);
+	}
+
+}
 }
