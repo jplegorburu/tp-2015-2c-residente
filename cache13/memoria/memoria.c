@@ -14,7 +14,7 @@ int main(int argv, char** argc) {
 
 
 	// Creamos los frames
-	reservarMemoria(marcos, g_Cant_Marcos);
+	inicializarListaMarcos(marcos, g_Cant_Marcos);
 	printf("\n LA LISTA TIENE %d MARCOS\n",list_size(marcos));
 
 	memoriaPrincipal = malloc(g_Cant_Marcos*g_Tam_Marcos); //Reservo la porcion de memoria donde se van a escribir y leer los marcos.
@@ -305,7 +305,7 @@ int AtiendeCliente(void * arg) {
 		//Recibimos los datos del cliente
 		buffer = RecibirDatos(socket, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
 
-		printf("ESTOY RECIBIENDO ESTO: %s", buffer);
+		printf("\nESTOY RECIBIENDO ESTO: %s\n", buffer);
 
 
 		int funcion;
@@ -430,7 +430,7 @@ void inicioProcesoSwap(int pid, int cant_pag){
 		int cantRafaga = 1, tamanio = 0;
 		//AtiendeCliente((void *)socket_swap);
 		buffer = RecibirDatos(socket_swap, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
-		printf("ESTOY RECIBIENDO ESTO PRUEBA CROTA: %s", buffer);
+		printf("\nINICIO PROCESO RECIBI: %s", buffer);
 		mensajeDeSwap(buffer);
 
 }
@@ -660,7 +660,7 @@ void informarLeer(char* buffer){
 	printf("Leer:\n");
 
 	el_Puerto = DigitosNombreArchivo(buffer, &posActual);
-		printf("Puerto CPU:%s\n", el_Puerto);
+	printf("Puerto CPU:%s\n", el_Puerto);
 
 	pid = DigitosNombreArchivo(buffer, &posActual);
 	printf("pid:%s\n", pid);
@@ -681,26 +681,24 @@ void informarLeer(char* buffer){
 	entrada_tablaProcesos * proc = buscarPorId(CharAToInt(pid));
 	//Conseguimos la entrada de la tabla de paginas:
 	entrada_tablaPags * entradaTablaPag = buscarPagina(proc, CharAToInt(num_pag));
-	t_frame marcos[entradaTablaPag->frame];
+
+
 	if(entradaTablaPag->presenteEnMemoria==1){
+		char * content = malloc(g_Tam_Marcos);
+		content = leerEnMP(entradaTablaPag->frame, content);
 
-		//t_frame marcos[entradaTablaPag->frame];
-		char * content = marcos[entradaTablaPag->frame].contenido;
-		printf("\n LEYENDO DE MP PID %d, PAG %d, CONTENIIDO %s\n", marcos[entradaTablaPag->frame].pid, marcos[entradaTablaPag->frame].pagina, marcos[entradaTablaPag->frame].contenido);
+		printf("\n LEYENDO DE MP CONTENIIDO %s\n", content);
 
-		leerCpu(la_cpu->ip,la_cpu->puerto,num_pag, content);
+		leerCpu(la_cpu->ip,la_cpu->puerto, num_pag, content);
 	}
 	else{
 		sem_wait(&sem_swap);
+		printf("LEYENDO DE SWAAAAP \n");
 		leerSwap(CharAToInt(pid), CharAToInt(num_pag));
-		//TODO:CARGARLA EN MP
-
 		sem_post(&sem_swap);
 	}
 
-//	sem_wait(&sem_swap);
-//	leerSwap(CharAToInt(pid), CharAToInt(num_pag));
-//	sem_post(&sem_swap);
+
 }
 
 
@@ -708,28 +706,52 @@ void informarEscribir(char* buffer){
 	char *el_Puerto, *pid, *num_pag, *contenido;
 	int posActual = 2;
 
-	printf("Escribir:\n");
+	printf("Escribir...\n");
 
 	el_Puerto = DigitosNombreArchivo(buffer, &posActual);
-		printf("Puerto CPU:%s\n", el_Puerto);
+	printf("Puerto CPU:%s\n", el_Puerto);
 
 	pid = DigitosNombreArchivo(buffer, &posActual);
 	printf("pid:%s\n", pid);
 
 	num_pag = DigitosNombreArchivo(buffer, &posActual);
-			printf("Número pagina:%s\n", num_pag);
+	printf("Número pagina:%s\n", num_pag);
 
 	contenido = DigitosNombreArchivo(buffer, &posActual);
-			printf("Contenido:%s\n", contenido);
+	printf("Contenido:%s\n", contenido);
 
 	//Agrego el proceso a la cpu correspondiente
 	t_cpu* la_cpu =buscarCPUporPuerto(el_Puerto);
 	//Busco la CPU por el puerto
 	la_cpu->procesoActivo=CharAToInt(pid);
 	//Le agreguo el proceso activo correspondiente.
+
+	//Coseguimos la entrada de la tabla de procesos:
+	entrada_tablaProcesos * proc = buscarPorId(CharAToInt(pid));
+	//Conseguimos la entrada de la tabla de paginas:
+	entrada_tablaPags * entradaTablaPag = buscarPagina(proc, CharAToInt(num_pag));
+
+
+	if(entradaTablaPag->presenteEnMemoria==1){
+
+	grabarEnMemoria(entradaTablaPag->frame,contenido);
+
+	printf("\n GRABANDO EN MP CONTENIIDO %s\n", contenido);
+
+	char* resultado = string_new();
+	string_append(&resultado,"1"); //TODO OJO QUE ESTA HARDCODEADO!!
+	string_append(&resultado,obtenerSubBuffer(num_pag));
+	string_append(&resultado,obtenerSubBuffer(contenido));
+
+	printf("\n ENVIANDO A CPU: %s\n", resultado);
+	escribirCpu(la_cpu->ip,la_cpu->puerto, resultado);
+	}
+
+	else{
 	sem_wait(&sem_swap);
 	escribirSwap(CharAToInt(pid),CharAToInt(num_pag),contenido);
 	sem_post(&sem_swap);
+	}
 }
 
 
@@ -830,7 +852,7 @@ void resultadoInicioSwap(char* buffer){
 	char *resultado, *pid;
 	int posActual = 2;
 
-	printf("Resultado Inicio:\n");
+	printf("\nResultado Inicio...\n");
 
 	pid = DigitosNombreArchivo(buffer, &posActual);
 		printf("PID:%s\n", pid);
@@ -846,10 +868,10 @@ void resultadoLecturaSwap(char* buffer){
 	char *contenido, *pid, *pagina, *error;
 	int posActual = 2;
 
-	printf("Resultado Lectura:\n");
+	printf("\nResultado Lectura...\n");
 
 	pid = DigitosNombreArchivo(buffer, &posActual);
-		printf("PID:%s\n", pid);
+	printf("PID:%s\n", pid);
 	error = buffer+posActual;
 	if(!strcmp(error,"0")){
 	//Busco la CPU en la lista donde se esta ejecutando el proceso.
@@ -859,29 +881,39 @@ void resultadoLecturaSwap(char* buffer){
 	else
 	{
 	pagina = DigitosNombreArchivo(buffer, &posActual);
-		printf("PAGINA:%s\n", pagina);
+	printf("\nPAGINA TRAIDA DE SWAP:%s\n", pagina);
 	contenido = DigitosNombreArchivo(buffer, &posActual);
-		printf("CONTENIDO:%s\n", contenido);
+	printf("\nCONTENIDO:%s\n", contenido);
+
 	//CARGO PAGINA EN MP
 		entrada_tablaProcesos * proc = buscarPorId(CharAToInt(pid));
 		//Conseguimos la entrada de la tabla de paginas:
 		entrada_tablaPags * entradaTablaPag = buscarPagina(proc, CharAToInt(pagina));
+
 		if(proc->framesAsignados<=g_Max_Marcos_Proc){
-			printf("\n Cargando Pagina a MP... \n");
+			printf("\nCargando Pagina a MP... \n");
 			t_frame * marcoLibre;
 			marcoLibre = buscarFrameLibre(marcos);
-			if(marcoLibre==NULL){
-				printf("No hay marco libre");
-			}
-//			t_frame marcos[pos]; ESTO NO SIRVE
+					if(marcoLibre==NULL){
+						printf("No hay marco libre"); //TODO: ACA FINALIZAR EL PROCESO?
+					}
+
+			//ASIGNAMOS ESE FRAME AL PROCESO.
+			grabarEnMemoria(marcoLibre->frameNro, contenido);
+
 			marcoLibre->pid=CharAToInt(pid);
 			marcoLibre->pagina = CharAToInt(pagina);
-		//	marcoLibre->contenido=contenido;
-			printf("LLEGUE ACA !");
-//
+
+			//printf("LLEGUE ACA ! \n");
+
 			entradaTablaPag->frame=marcoLibre->frameNro;
 			entradaTablaPag->presenteEnMemoria=1;
-			printf("\n el proceso %d, pagina %d, CONTENIDO CARGADO %s \n", marcoLibre->pid,marcoLibre->pagina, marcoLibre->contenido);
+
+			//TODO: SI EL PROCESO TIENE TODOS SUS MARCOS LLENOS, CORRER ALGO DE REEMPLAZO
+
+
+
+			printf("\nel proceso %d, pagina %d, CONTENIDO CARGADO %s \n", marcoLibre->pid,marcoLibre->pagina, contenido);
 
 		}
 	//Busco la CPU en la lista donde se esta ejecutando el proceso.
@@ -895,7 +927,7 @@ void resultadoEscrituraSwap(char* buffer){
 	char *resultado, *pid;
 	int posActual = 2;
 
-	printf("Resultado Escritura:\n");
+	printf("\nResultado Escritura...\n");
 
 	pid = DigitosNombreArchivo(buffer, &posActual);
 		printf("PID:%s\n", pid);
@@ -912,7 +944,7 @@ void resultadoFinSwap(char* buffer){
 	char *resultado, *pid;
 	int posActual = 2;
 
-	printf("Resultado Fin:\n");
+	printf("\nResultado Fin....\n");
 
 	pid = DigitosNombreArchivo(buffer, &posActual);
 		printf("PID:%s\n", pid);
@@ -1056,13 +1088,14 @@ t_cpu* buscarCPUporPuerto(char* puerto) {
 	la_cpu = list_find(lista_cpu, _true);
 	return la_cpu;
 }
+
 //t_tlb* crearTLB(int cant_entradas){
 	//t_tlb TLB;
 //	return TLB;
 //}
 
 
-void reservarMemoria(t_list * marcos, int cant_marcos){
+void inicializarListaMarcos(t_list * marcos, int cant_marcos){
 	int i;
 	for (i=0; i<cant_marcos; i++){
 	list_add(marcos, frame_create(g_Tam_Marcos,i));
@@ -1099,5 +1132,39 @@ t_frame * buscarFrameLibre(t_list * marcos){
 		return marcoLibre;
 }
 
+char* leerEnMP(int nroMarco, char * buffer) {
+ char * memoria = memoriaPrincipal;
+ int i = 0;
+ int contador = g_Tam_Marcos;
+ char* aux = malloc(g_Tam_Marcos + 1);
+ memset(aux, '0', g_Tam_Marcos * sizeof(char)); //Setea el aux a 0
 
+ memoria = memoria + ((nroMarco * g_Tam_Marcos));
+ while (contador--) {
+  aux[i] = memoria[i];
+  i++;
+ }
+ aux[i] = '\0';
+
+ memcpy(buffer, aux, g_Tam_Marcos); //Copia el aux en buffer
+ return buffer;
+}
+
+int grabarEnMemoria(int nroMarco, char * texto) {
+ char* aux = malloc(g_Tam_Marcos);
+ int i = 0, cont;
+ cont = g_Tam_Marcos;
+ memset(aux, '0', g_Tam_Marcos); //Setea el aux a 0
+
+ memcpy(aux, texto, g_Tam_Marcos); //Copia el texto en el aux
+
+ char * memoria = memoriaPrincipal;
+ memoria = memoria + (nroMarco * g_Tam_Marcos);
+ while (cont--) {
+	 memoria [i]= aux[i];
+	 i++;
+	 printf("%c",*(memoria-1));
+ }
+ return 1;
+}
 

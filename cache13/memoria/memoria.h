@@ -69,7 +69,6 @@ typedef struct{
 	int frameNro;
 	int pid;
 	int pagina;
-	char * contenido;
 	int usado;
 } t_frame;
 
@@ -79,7 +78,6 @@ t_frame *frame_create(int tam_marcos, int nroMarco) {
 	new->frameNro = nroMarco;
 	new->pid = 0;
 	new->pagina = 0;
-	new->contenido = malloc(tam_marcos);
 	new->usado=0;
 	return new;
 }
@@ -175,8 +173,9 @@ int inicioProcesoCpu(char*ip, char*puerto,char* resultado);
 int escribirCpu(char*ip, char*puerto,char* resultado);
 int leerCpu(char*ip, char*puerto,char* pagina,char* contenido);
 void mensajeDeSwap(char * buffer);
-void reservarMemoria(t_list * marcos, int g_Cant_Marcos);
+void inicializarListaMarcos(t_list * marcos, int g_Cant_Marcos);
 entrada_tablaProcesos * buscarPorId(int id);
 entrada_tablaPags * buscarPagina(entrada_tablaProcesos * proc, int numPag);
 t_frame * buscarFrameLibre(t_list * marcos);
-
+char* leerEnMP(int nroMarco, char * buffer);
+int grabarEnMemoria(int nroMarco,  char * texto);
