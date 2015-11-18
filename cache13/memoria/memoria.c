@@ -739,7 +739,7 @@ void informarEscribir(char* buffer){
 	printf("\n GRABANDO EN MP CONTENIIDO %s\n", contenido);
 
 	char* resultado = string_new();
-	string_append(&resultado,"1"); //TODO OJO QUE ESTA HARDCODEADO!!
+	//string_append(&resultado,"1"); //TODO OJO QUE ESTA HARDCODEADO!!
 	string_append(&resultado,obtenerSubBuffer(num_pag));
 	string_append(&resultado,obtenerSubBuffer(contenido));
 
@@ -1143,6 +1143,7 @@ char* leerEnMP(int nroMarco, char * buffer) {
  while (contador--) {
   aux[i] = memoria[i];
   i++;
+
  }
  aux[i] = '\0';
 
@@ -1152,8 +1153,8 @@ char* leerEnMP(int nroMarco, char * buffer) {
 
 int grabarEnMemoria(int nroMarco, char * texto) {
  char* aux = malloc(g_Tam_Marcos);
- int i = 0, cont;
- cont = g_Tam_Marcos;
+ int i = 0;
+ int cont = g_Tam_Marcos;
  memset(aux, '0', g_Tam_Marcos); //Setea el aux a 0
 
  memcpy(aux, texto, g_Tam_Marcos); //Copia el texto en el aux
