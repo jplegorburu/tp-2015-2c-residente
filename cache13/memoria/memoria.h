@@ -43,6 +43,7 @@ int g_Cant_Marcos;
 int g_Tam_Marcos;
 int g_Entradas_Tlb;
 char* g_Tlb_Habilitada;
+char* g_Algoritmo_Reemplazo;
 int g_Retardo_Memoria;
 int g_Ejecutando = 1;						// - Bandera que controla la ejecución o no del programa. Si está en 0 el programa se cierra.
 t_list* lista_cpu; 							//Lista de Cpus conectadas.
@@ -87,10 +88,28 @@ void frame_destroy(t_frame* self) {
 }
 
 typedef struct{
+	int frameNro;
+	int uso;
+	int modificado;
+} t_marcoProceso;
+
+
+t_marcoProceso *marcoProceso_create(int nroMarco) {
+	t_marcoProceso *new = malloc(sizeof(t_marcoProceso));
+	new->frameNro = nroMarco;
+	new->uso = 0;
+	new->modificado = 0;
+	return new;
+}
+
+void marcoProceso_destroy(t_marcoProceso* self) {
+	free(self);
+}
+
+typedef struct{
 	int pagN;
 	int frame;
 	int presenteEnMemoria;
-	int modificado;
 } entrada_tablaPags;
 
 entrada_tablaPags *entradaTablaPags_create(int i) {
@@ -98,7 +117,6 @@ entrada_tablaPags *entradaTablaPags_create(int i) {
 	new->pagN = i;
 	new->frame = 0;
 	new->presenteEnMemoria = 0;
-	new->modificado = 0;
 	return new;
 }
 
@@ -109,14 +127,16 @@ void entradaTablaPags_destroy(entrada_tablaPags* self) {
 typedef struct{
 	int pid;
 	t_list * tablaPags;
-	int framesAsignados;
+	t_list * framesAsignados;
+	//int framesAsignados;
 }entrada_tablaProcesos;
 
 entrada_tablaProcesos *entradaTablaProcesos_create(int pid) {
 	entrada_tablaProcesos *new = malloc(sizeof(entrada_tablaProcesos));
 	new->pid = pid;
 	new->tablaPags = list_create();
-	new->framesAsignados = 0;
+	new->framesAsignados = list_create();
+	//new->framesAsignados = 0;
 	return new;
 }
 
@@ -189,6 +209,8 @@ void mensajeDeSwap(char * buffer);
 void inicializarListaMarcos(t_list * marcos, int g_Cant_Marcos);
 entrada_tablaProcesos * buscarPorId(int id);
 entrada_tablaPags * buscarPagina(entrada_tablaProcesos * proc, int numPag);
-t_frame * buscarFrameLibre(t_list * marcos);
-char* leerEnMP(int nroMarco, char * buffer);
+t_frame * buscarFrameLibre();
+t_frame * buscarFramePorNumero(int nroFrame);
+char* leerEnMP(int nroMarco);
 int grabarEnMemoria(int nroMarco,  char * texto);
+void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas, char* contenido);

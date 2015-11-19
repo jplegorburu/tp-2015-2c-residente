@@ -155,6 +155,13 @@ void LevantarConfig() {
 			Error("No se pudo leer el parametro RETARDO_MEMORIA");
 		}
 
+		// Preguntamos y obtenemos si la TLB esta habilitada en la memoria
+		if (config_has_property(config, "ALGORITMO_REEMPLAZO")) {
+			g_Algoritmo_Reemplazo = config_get_string_value(config,"ALGORITMO_REEMPLAZO");
+		} else{
+			Error("No se pudo leer el parametro ALGORITMO_REEMPLAZO");
+		}
+
 
 	} else {
 		Error("No se pudo abrir el archivo de configuracion");
@@ -699,8 +706,12 @@ void informarLeer(char* buffer){
 
 	if(entradaTablaPag->presenteEnMemoria==1){
 		char * content = malloc(g_Tam_Marcos);
-		content = leerEnMP(entradaTablaPag->frame, content);
+		content = leerEnMP(entradaTablaPag->frame);
 
+		if((strcmp(g_Algoritmo_Reemplazo,"LRU"))==0){
+			t_marcoProceso* frameCambio = sacarFramePorNumero(proc->framesAsignados,entradaTablaPag->frame);
+			list_add(proc->framesAsignados,frameCambio);
+		}
 		printf("\n LEYENDO DE MP CONTENIIDO %s\n", content);
 
 		leerCpu(la_cpu->ip,la_cpu->puerto, num_pag, content);
@@ -899,16 +910,19 @@ void resultadoLecturaSwap(char* buffer){
 
 	//CARGO PAGINA EN MP
 		entrada_tablaProcesos * proc = buscarPorId(CharAToInt(pid));
-		//Conseguimos la entrada de la tabla de paginas:
+	//Conseguimos la entrada de la tabla de paginas:
 		entrada_tablaPags * entradaTablaPag = buscarPagina(proc, CharAToInt(pagina));
 
-		if(proc->framesAsignados<=g_Max_Marcos_Proc){
+		if(list_size(proc->framesAsignados)<=g_Max_Marcos_Proc){
+
 			printf("\nCargando Pagina a MP... \n");
 			t_frame * marcoLibre;
-			marcoLibre = buscarFrameLibre(marcos);
+			marcoLibre = buscarFrameLibre();
 					if(marcoLibre==NULL){
 						printf("No hay marco libre"); //TODO: ACA FINALIZAR EL PROCESO?
 					}
+			//Sumo uno a los frames asignados al procesoS
+			list_add(proc->framesAsignados,marcoProceso_create(marcoLibre->frameNro));
 
 			//ASIGNAMOS ESE FRAME AL PROCESO.
 			grabarEnMemoria(marcoLibre->frameNro, contenido);
@@ -928,7 +942,11 @@ void resultadoLecturaSwap(char* buffer){
 
 			printf("\nel proceso %d, pagina %d, CONTENIDO CARGADO %s \n", marcoLibre->pid,marcoLibre->pagina, contenido);
 
+		} else {
+			//Si los marcos asignados al proceso estan llenos correr algoritmo de remplazo
+			correrAlgoritmo(proc,entradaTablaPag, contenido);
 		}
+
 	//Busco la CPU en la lista donde se esta ejecutando el proceso.
 	t_cpu* la_cpu = buscarCPUporPid(CharAToInt(pid));
 	leerCpu(la_cpu->ip,la_cpu->puerto,pagina, contenido);
@@ -1136,17 +1154,43 @@ entrada_tablaPags * buscarPagina(entrada_tablaProcesos * proc, int numPag){
 	return entradaTablaPag;
 	}
 
-t_frame * buscarFrameLibre(t_list * marcos){
+t_frame * buscarFrameLibre(){
 	t_frame* marcoLibre = malloc(sizeof(t_frame));
 	bool _true(void *elem) {
 				return (((t_frame*) elem)->usado == 0);
 			}
 		marcoLibre = list_find(marcos, _true);
-		//marcoLibre->usado=1;
 		return marcoLibre;
 }
 
-char* leerEnMP(int nroMarco, char * buffer) {
+t_frame * sacarFramePorNumero(int nroFrame){
+	t_frame* marcoLibre = malloc(sizeof(t_frame));
+	bool _true(void *elem) {
+				return (((t_frame*) elem)->frameNro == nroFrame);
+			}
+		marcoLibre = list_remove_by_condition(marcos, _true);
+		return marcoLibre;
+}
+
+t_frame * buscarFramePorNumero(int nroFrame){
+	t_frame* marcoLibre = malloc(sizeof(t_frame));
+	bool _true(void *elem) {
+				return (((t_frame*) elem)->frameNro == nroFrame);
+			}
+		marcoLibre = list_find(marcos, _true);
+		return marcoLibre;
+}
+
+t_marcoProceso * buscarMarcoProceso(t_list* listaFrames, int nroFrame){
+	t_marcoProceso* marcoLibre = malloc(sizeof(t_marcoProceso));
+	bool _true(void *elem) {
+				return (((t_marcoProceso*) elem)->frameNro == nroFrame);
+			}
+		marcoLibre = list_find(listaFrames, _true);
+		return marcoLibre;
+}
+
+char* leerEnMP(int nroMarco) {
  char * memoria = memoriaPrincipal;
  int i = 0;
  int contador = g_Tam_Marcos;
@@ -1161,9 +1205,9 @@ char* leerEnMP(int nroMarco, char * buffer) {
  }
  aux[i] = '\0';
 
- memcpy(buffer, aux, g_Tam_Marcos); //Copia el aux en buffer
- printf("\nLA LECTURA FUE: %s\n",buffer);
- return buffer;
+ //memcpy(buffer, aux, g_Tam_Marcos); //Copia el aux en buffer
+ printf("\nLA LECTURA FUE: %s\n",aux);
+ return aux;
 }
 
 int grabarEnMemoria(int nroMarco, char * texto) {
@@ -1184,3 +1228,27 @@ int grabarEnMemoria(int nroMarco, char * texto) {
  return 1;
 }
 
+void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas, char* contenido){
+	printf("\nESTOY CORRIENDO EL ALGORITMO DE REEMPLAZO!!\n");
+
+	if((strcmp(g_Algoritmo_Reemplazo,"FIFO"))==0 || (strcmp(g_Algoritmo_Reemplazo,"LRU"))==0){
+	//FIFO y LRU se manejan igual salvo cuando leen o escriben una pagina que ya estaba cargada.
+	t_marcoProceso* el_marco =list_remove(proceso->framesAsignados,0);
+
+	if(el_marco->modificado==1){
+		//Si el marco fue modificado cargarlo devuelta a swap
+		leerEnMP(el_marco->frameNro);
+		escribirSwap(proceso->pid,tPaginas->pagN,leerEnMP(el_marco->frameNro)); //TODO Ver de hacer otra funcion que no retorne a CPU
+	}
+	 	grabarEnMemoria(el_marco->frameNro, contenido);
+	 	t_frame * marcoModif;
+		marcoModif = buscarFramePorNumero(el_marco->frameNro);
+		marcoModif->pagina=tPaginas->pagN;
+
+	list_add(proceso->framesAsignados,el_marco);
+	//Vuevlo a agregarlo al final de la lista
+
+	} else if((strcmp(g_Algoritmo_Reemplazo,"CLOCK-M"))==0){
+
+	}
+}
