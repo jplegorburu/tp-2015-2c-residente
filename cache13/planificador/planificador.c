@@ -4,6 +4,10 @@ int main(int argv, char** argc) {
 
 	int iThreadConsola, iThreadOrquestador;					//Hilo de consola
 	sem_init(&sEntradaSalida,0,1);
+	sem_init(&sCpus,0,1);
+	sem_init(&sPcbs,0,1);
+	sem_init(&sListos,0,1);
+	sem_init(&sEjecutando,0,1);
 
 	lista_cpu = list_create();		//Lista de cpus
 	lista_procesos = list_create();		//Lista de procesos.
@@ -120,19 +124,25 @@ int operaciones_consola() {
 
 int correrPrograma(t_pcb* la_pcb) {
 
-	//Busco si hay alguna CPU libre
+	//Busco si hay allguna CPU libre
+	sem_wait(&sCpus);
 	t_cpu* la_cpu = buscarCpuLibre();
+	sem_post(&sCpus);
 	if (la_cpu == NULL) {
 		//Si las CPU estan todas ocupadas agrego el proceso a la cola de listos.
 		printf("No hay CPU disponibles.\n");
+		sem_wait(&sListos);
 		agregarAColaListos(la_pcb->pid);
+		sem_post(&sListos);
 		return 1;
 	} else {
 		//Si encuentra una CPU libre inicia el proceso.
 
 		iniciarPrograma(la_pcb, la_cpu->ip, la_cpu->puerto); //Falta enviar contexto de ejecucion Path prox instruccion.
 		la_pcb->estado = 1;
+		sem_wait(&sEjecutando);
 		agregarAListaEjecucion(la_pcb->pid);
+		sem_post(&sEjecutando);
 		return 1;
 	}
 	//PLANIFICAR buscarCpuLibre y algoritmo de ejecucion.
@@ -155,8 +165,11 @@ void eliminarDeListaEjecucion(int pid) {
 	time_t tiempo;
 	time(&tiempo);
 	double tejecucion = difftime(tiempo, cola_eliminar->tiempoIngreso);
+	sem_wait(&sPcbs);
 	t_pcb* la_pcb = buscarPCBporPid(pid);
 	la_pcb->tejecucion = la_pcb->tejecucion + tejecucion;
+	sem_post(&sPcbs);
+
 	cola_destroy(cola_eliminar);
 }
 
@@ -183,8 +196,10 @@ t_pcb* eliminarDeColaListos() {
 	time_t tiempo;
 	time(&tiempo);
 	double tespera = difftime(tiempo, cola_eliminar->tiempoIngreso);
+	sem_wait(&sPcbs);
 	t_pcb* la_pcb = buscarPCBporPid(cola_eliminar->pid);
 	la_pcb->tespera = la_pcb->tespera + tespera;
+	sem_post(&sPcbs);
 	cola_destroy(cola_eliminar);
 	return la_pcb;
 }
@@ -205,8 +220,10 @@ void eliminarDeColaBloqueados(int pid) {
 	time_t tiempo;
 	time(&tiempo);
 	double trespuesta = difftime(tiempo, cola_eliminar->tiempoIngreso);
+	sem_wait(&sPcbs);
 	t_pcb* la_pcb = buscarPCBporPid(pid);
 	la_pcb->trespuesta = la_pcb->trespuesta + trespuesta;
+	sem_post(&sPcbs);
 	cola_destroy(cola_eliminar);
 }
 
@@ -287,13 +304,14 @@ int ultimaInstruccion(char* ruta) {
 }
 
 void finalizarProceso(int pid) {
+	sem_wait(&sPcbs);
 	t_pcb* la_pcb = buscarPCBporPid(pid);
 	if (la_pcb == NULL) {
 		Error("El PID %d ingresado es incorrecto", pid);
 	} else {
 		la_pcb->proxInst = ultimaInstruccion(la_pcb->ruta);
 	}
-
+	sem_post(&sPcbs);
 }
 char* obtenerEstado(int estado) {
 	if (estado == 0) {
@@ -398,13 +416,19 @@ int finDeQuantum(char* buffer){
 	printf("instrucRealizadas:%s\n", instrucRealizadas);
 	resultadoInstrucciones = DigitosNombreArchivo(buffer, &posActual);
 	printf("resultadoInstrucciones:%s\n", resultadoInstrucciones);
+	sem_wait(&sCpus);
 	liberarCpu(el_Puerto);
+	sem_post(&sCpus);
 	procesarInstrucciones(resultadoInstrucciones, CharAToInt(pid),CharAToInt(instrucRealizadas));
+	sem_wait(&sPcbs);
 	t_pcb* la_pcb = buscarPCBporPid(CharAToInt(pid));
 	la_pcb->estado=0;
 	la_pcb->proxInst=la_pcb->proxInst+CharAToInt(instrucRealizadas);
-	agregarAColaListos(CharAToInt(pid));
+	sem_post(&sPcbs);
 
+	sem_wait(&sListos);
+	agregarAColaListos(CharAToInt(pid));
+	sem_post(&sListos);
 	if(list_size(cola_listos)>0)
 	planificar();
 
@@ -426,31 +450,30 @@ int procesoBloqueado(char* buffer){
 	printf("instrucRealizadas:%s\n", instrucRealizadas);
 	resultadoInstrucciones = DigitosNombreArchivo(buffer, &posActual);
 	printf("resultadoInstrucciones:%s\n", resultadoInstrucciones);
+	sem_wait(&sCpus);
 	liberarCpu(el_Puerto);
+	sem_post(&sCpus);
 	procesarInstrucciones(resultadoInstrucciones, CharAToInt(pid),CharAToInt(instrucRealizadas));
+	sem_wait(&sPcbs);
 	t_pcb* la_pcb = buscarPCBporPid(CharAToInt(pid));
 	la_pcb->estado=2;
 	la_pcb->proxInst=la_pcb->proxInst+CharAToInt(instrucRealizadas);
-
-	//Tomo el tiempo en que lo agrego a la cola de bloqueados
-	time_t tiempoIngreso;
-	time(&tiempoIngreso);
-	printf("\nEstoy bloqueado por %s segundos\n", tBloqueado);
-	sem_wait(&sEntradaSalida);
-	sleep(CharAToInt(tBloqueado));
-	sem_post(&sEntradaSalida);
-
-	//Tomo el tiempo en el que lo saco de la cola de bloqueados.
-	time_t tiempo;
-	time(&tiempo);
-	double trespuesta = difftime(tiempo,tiempoIngreso);
-	la_pcb->trespuesta = la_pcb->trespuesta + trespuesta;
-	la_pcb->estado=0;
-	agregarAColaListos(CharAToInt(pid));
+	sem_post(&sPcbs);
 
 	if(list_size(cola_listos)>0)
-		planificar();
+			planificar();
+    struct structEntradaSalida * argsEnvio = malloc(sizeof(struct structEntradaSalida));
+    argsEnvio->pid = CharAToInt(pid);
+    argsEnvio->tBloqueado = CharAToInt(tBloqueado);
 
+	pthread_t hEntradaSalida;
+	pthread_create(&hEntradaSalida, NULL, (void*) atiendeEntrdaSalida,
+			(void*)argsEnvio);
+
+	if(list_size(cola_listos)>0)
+				planificar();
+
+	pthread_join(hConsola, NULL);
 	return 1;
 
 }
@@ -470,7 +493,9 @@ int finDeProceso(char* buffer) {
 	printf("instrucRealizadas:%s\n", instrucRealizadas);
 	resultadoInstrucciones = DigitosNombreArchivo(buffer, &posActual);
 	printf("resultadoInstrucciones:%s\n", resultadoInstrucciones);
+	sem_wait(&sCpus);
 	liberarCpu(el_Puerto);
+	sem_post(&sCpus);
 	procesarInstrucciones(resultadoInstrucciones, CharAToInt(pid),CharAToInt(instrucRealizadas));
 	eliminarProceso(CharAToInt(pid));
 	if(list_size(cola_listos)>0)
@@ -481,9 +506,11 @@ int finDeProceso(char* buffer) {
 
 void eliminarProceso(int pid){
 	eliminarDeListaEjecucion(pid);
+	sem_wait(&sPcbs);
 	t_pcb* la_pcb = buscarPCBporPid(pid);
 	printf("mProc %d FINALIZADO Tiempo de Espera:%.2f Tiempo de Ejecucion:%.2f Tiempo de Respuesta:%.2f",pid,la_pcb->tespera,la_pcb->tejecucion,la_pcb->trespuesta);
 	eliminarPcb(pid);
+	sem_post(&sPcbs);
 }
 
 void procesarInstrucciones(char* resultado, int pid,int cantInstrucciones) {
@@ -1006,9 +1033,38 @@ int AtiendeCliente(void * arg) {
 		}
 
 void planificar(){
+	sem_wait(&sListos);
 	t_pcb* pcbSiguiente = eliminarDeColaListos();
+	sem_post(&sListos);
 	if(pcbSiguiente != NULL){ //Si no encuentra nada la cola de listos esta vacia.
 		correrPrograma(pcbSiguiente);
 	}
 
+}
+
+int atiendeEntrdaSalida(void * arguments) {
+
+		struct structEntradaSalida *args = (struct structEntradaSalida *)arguments;
+		int pid = args->pid;
+		int tBloqueado = args->tBloqueado;
+		sem_wait(&sPcbs);
+		t_pcb* la_pcb = buscarPCBporPid(pid);
+		sem_post(&sPcbs);
+		//Tomo el tiempo en que lo agrego a la cola de bloqueados
+		time_t tiempoIngreso;
+		time(&tiempoIngreso);
+		printf("\nEstoy bloqueado por %d segundos\n", tBloqueado);
+		sem_wait(&sEntradaSalida);
+		sleep(tBloqueado);
+		sem_post(&sEntradaSalida);
+		printf("\nNO ESTOY MAS BLOQUEADO\n");
+
+		//Tomo el tiempo en el que lo saco de la cola de bloqueados.
+		time_t tiempo;
+		time(&tiempo);
+		double trespuesta = difftime(tiempo,tiempoIngreso);
+		la_pcb->trespuesta = la_pcb->trespuesta + trespuesta;
+		la_pcb->estado=0;
+		correrPrograma(la_pcb);
+		return 1;
 }

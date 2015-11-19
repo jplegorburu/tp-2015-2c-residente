@@ -82,6 +82,10 @@ t_frame *frame_create(int tam_marcos, int nroMarco) {
 	return new;
 }
 
+void frame_destroy(t_frame* self) {
+	free(self);
+}
+
 typedef struct{
 	int pagN;
 	int frame;
@@ -98,6 +102,10 @@ entrada_tablaPags *entradaTablaPags_create(int i) {
 	return new;
 }
 
+void entradaTablaPags_destroy(entrada_tablaPags* self) {
+	free(self);
+}
+
 typedef struct{
 	int pid;
 	t_list * tablaPags;
@@ -111,6 +119,11 @@ entrada_tablaProcesos *entradaTablaProcesos_create(int pid) {
 	new->framesAsignados = 0;
 	return new;
 }
+
+void entradaTablaProcesos_destroy(entrada_tablaProcesos* self) {
+	free(self);
+}
+
 
 
 typedef struct {

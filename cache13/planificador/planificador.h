@@ -55,7 +55,11 @@ char* g_Algoritmo_Planificador;
 int g_Quantum_Planificador;
 int g_Ejecutando = 1;						// - Bandera que controla la ejecución o no del programa. Si está en 0 el programa se cierra.
 int pidProcesos = 0;							//Variable global para ir asignandole pid a los procesos.
-sem_t sEntradaSalida;
+sem_t sEntradaSalida;                           //Semaforo de entrada y salida
+sem_t sCpus;                           //Semaforo de lista de cpu
+sem_t sPcbs;                           //Semaforo de lista de pcb
+sem_t sListos;                           //Semaforo de lista de Listos
+sem_t sEjecutando;                           //Semaforo de lista de procesos en Ejecucion
 
 // TIPOS //
 typedef enum {
@@ -113,6 +117,11 @@ void cpu_destroy(t_cpu* self) {
 	free(self);
 }
 
+struct structEntradaSalida {
+    int pid;
+    int tBloqueado;
+};
+
 typedef struct {
 	int pid;
 	time_t tiempoIngreso;
@@ -169,3 +178,4 @@ int finDeQuantum(char* buffer);
 int procesoBloqueado(char* buffer);
 int CharAToInt(char* x);
 void planificar();
+int atiendeEntrdaSalida(void * arguments);

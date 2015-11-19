@@ -609,6 +609,20 @@ void informarFinDelProceso(char* buffer){
 	//Busco la CPU por el puerto
 	la_cpu->procesoActivo=CharAToInt(pid);
 	//Le agreguo el proceso activo correspondiente.
+	//AGREGO PROCESO A TABLAS DE LA MEMORIA
+
+	bool _true(void *elem) {
+			return (((entrada_tablaProcesos*) elem)->pid == CharAToInt(pid));
+		}
+	entrada_tablaProcesos* unProceso = list_remove_by_condition(lista_procesos, _true);
+	printf("\n PROCESO %d ELIMINADO CON %d PAGS\n", unProceso->pid,list_size(unProceso->tablaPags));
+
+	while(list_size(unProceso->tablaPags)!=0){
+		entrada_tablaPags * entrada = list_remove(unProceso->tablaPags,0);
+		entradaTablaPags_destroy(entrada);
+		};
+	entradaTablaProcesos_destroy(unProceso);
+
 	sem_wait(&sem_swap);
 	finProcesoSwap(CharAToInt(pid));
 	sem_post(&sem_swap);
@@ -745,9 +759,7 @@ void informarEscribir(char* buffer){
 
 	printf("\n ENVIANDO A CPU: %s\n", resultado);
 	escribirCpu(la_cpu->ip,la_cpu->puerto, resultado);
-	}
-
-	else{
+	}else{
 	sem_wait(&sem_swap);
 	escribirSwap(CharAToInt(pid),CharAToInt(num_pag),contenido);
 	sem_post(&sem_swap);
@@ -907,6 +919,7 @@ void resultadoLecturaSwap(char* buffer){
 			//printf("LLEGUE ACA ! \n");
 
 			entradaTablaPag->frame=marcoLibre->frameNro;
+			marcoLibre->usado=1;
 			entradaTablaPag->presenteEnMemoria=1;
 
 			//TODO: SI EL PROCESO TIENE TODOS SUS MARCOS LLENOS, CORRER ALGO DE REEMPLAZO
@@ -1017,6 +1030,7 @@ int leerCpu(char*ip, char*puerto,char*pagina,char* contenido){
 	string_append(&buffer,obtenerSubBuffer(pagina));
 	string_append(&buffer,obtenerSubBuffer(contenido));
 	EnviarDatos(socket_cpu, buffer,strlen(buffer));
+	free(contenido);
 	return 1;
 
 }
@@ -1148,6 +1162,7 @@ char* leerEnMP(int nroMarco, char * buffer) {
  aux[i] = '\0';
 
  memcpy(buffer, aux, g_Tam_Marcos); //Copia el aux en buffer
+ printf("\nLA LECTURA FUE: %s\n",buffer);
  return buffer;
 }
 
@@ -1162,7 +1177,7 @@ int grabarEnMemoria(int nroMarco, char * texto) {
  char * memoria = memoriaPrincipal;
  memoria = memoria + (nroMarco * g_Tam_Marcos);
  while (cont--) {
-	 memoria [i]= aux[i];
+	 memoria[i]= aux[i];
 	 i++;
 	 printf("%c",*(memoria-1));
  }
