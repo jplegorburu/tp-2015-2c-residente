@@ -53,7 +53,7 @@ t_list* marcos;
 pthread_t hOrquestadorConexiones;
 int socket_swap;
 char* memoriaPrincipal;
-
+int punteroClock=0;      //puntero para el algoritmo clock modificado
 
 
 // TIPOS //
@@ -194,6 +194,7 @@ void inicioProcesoSwap(int pid, int cant_pag);
 void finProcesoSwap(int pid);
 void leerSwap(int pid, int num_pag);
 void escribirSwap(int pid, int num_pag, char* contenido);
+void escribirSwapReemplazo(int pid, int num_pag, char* contenido);
 void resultadoInicioSwap(char* buffer);
 void resultadoLecturaSwap(char* buffer);
 void resultadoEscrituraSwap(char* buffer);
@@ -213,4 +214,6 @@ t_frame * buscarFrameLibre();
 t_frame * buscarFramePorNumero(int nroFrame);
 char* leerEnMP(int nroMarco);
 int grabarEnMemoria(int nroMarco,  char * texto);
-void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas, char* contenido);
+void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas, char* contenido, int operacion);
+t_marcoProceso * buscarMarcoProceso(t_list* listaFrames, int nroFrame);
+t_marcoProceso * sacarMarcoProceso(t_list* listaFrames, int nroFrame);

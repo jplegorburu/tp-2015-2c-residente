@@ -422,8 +422,6 @@ void finProcesoSwap(int pid){
 }
 
 void inicioProcesoSwap(int pid, int cant_pag){
-	//int bytesRecibidos;
-		//int cantRafaga=1,tamanio=0;
 
 
 		//32+pid+cantidad paginas
@@ -435,7 +433,6 @@ void inicioProcesoSwap(int pid, int cant_pag){
 
 		int bytesRecibidos;
 		int cantRafaga = 1, tamanio = 0;
-		//AtiendeCliente((void *)socket_swap);
 		buffer = RecibirDatos(socket_swap, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
 		printf("\nINICIO PROCESO RECIBI: %s", buffer);
 		mensajeDeSwap(buffer);
@@ -459,6 +456,35 @@ void leerSwap(int pid, int num_pag){
 		mensajeDeSwap(buffer);
 }
 
+char* leerSwapEscribir(int pid, int num_pag){
+
+
+		//33+pid+numero pagina
+		char* buffer = string_new();
+		string_append(&buffer,"33");
+		string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
+		string_append(&buffer,obtenerSubBuffer(string_itoa(num_pag)));
+		EnviarDatos(socket_swap, buffer,strlen(buffer));
+		//AtiendeCliente((void *)socket_swap);
+
+		int bytesRecibidos;
+		int cantRafaga = 1, tamanio = 0;
+		buffer = RecibirDatos(socket_swap, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
+
+		char *contenido, *pid2, *pagina;
+		int posActual = 2;
+
+		printf("\nResultado Lectura...\n");
+
+		pid2 = DigitosNombreArchivo(buffer, &posActual);
+		printf("PID:%s\n", pid2);
+		pagina = DigitosNombreArchivo(buffer, &posActual);
+		printf("\nPAGINA TRAIDA DE SWAP:%s\n", pagina);
+		contenido = DigitosNombreArchivo(buffer, &posActual);
+		printf("\nCONTENIDO:%s\n", contenido);
+		return contenido;
+}
+
 void escribirSwap(int pid, int num_pag, char* contenido){
 
 
@@ -474,6 +500,22 @@ void escribirSwap(int pid, int num_pag, char* contenido){
 		int cantRafaga = 1, tamanio = 0;
 		buffer = RecibirDatos(socket_swap, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
 		mensajeDeSwap(buffer);
+}
+
+void escribirSwapReemplazo(int pid, int num_pag, char* contenido){
+
+
+		//34+pid+numero pagina
+		char* buffer = string_new();
+		string_append(&buffer,"34");
+		string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
+		string_append(&buffer,obtenerSubBuffer(string_itoa(num_pag)));
+		string_append(&buffer,obtenerSubBuffer(contenido));
+		EnviarDatos(socket_swap, buffer,strlen(buffer));
+
+		int bytesRecibidos;
+		int cantRafaga = 1, tamanio = 0;
+		buffer = RecibirDatos(socket_swap, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
 }
 
 void ConectarseConSwap(int g_Puerto_Memoria){
@@ -628,6 +670,13 @@ void informarFinDelProceso(char* buffer){
 		entrada_tablaPags * entrada = list_remove(unProceso->tablaPags,0);
 		entradaTablaPags_destroy(entrada);
 		};
+	while(list_size(unProceso->framesAsignados)!=0){
+		t_marcoProceso * marcoProc = list_remove(unProceso->framesAsignados,0);
+		//Libero los marcos
+		t_frame* marcoDisponible = buscarFramePorNumero(marcoProc->frameNro);
+		marcoDisponible->usado=0;
+		marcoProceso_destroy(marcoProc);
+		};
 	entradaTablaProcesos_destroy(unProceso);
 
 	sem_wait(&sem_swap);
@@ -709,9 +758,13 @@ void informarLeer(char* buffer){
 		content = leerEnMP(entradaTablaPag->frame);
 
 		if((strcmp(g_Algoritmo_Reemplazo,"LRU"))==0){
-			t_marcoProceso* frameCambio = sacarFramePorNumero(proc->framesAsignados,entradaTablaPag->frame);
+			t_marcoProceso* frameCambio = sacarMarcoProceso(proc->framesAsignados,entradaTablaPag->frame);
 			list_add(proc->framesAsignados,frameCambio);
 		}
+
+		t_marcoProceso* frameProc = buscarMarcoProceso(proc->framesAsignados,entradaTablaPag->frame);
+		frameProc->uso=1;
+
 		printf("\n LEYENDO DE MP CONTENIIDO %s\n", content);
 
 		leerCpu(la_cpu->ip,la_cpu->puerto, num_pag, content);
@@ -759,7 +812,15 @@ void informarEscribir(char* buffer){
 
 	if(entradaTablaPag->presenteEnMemoria==1){
 
+	if((strcmp(g_Algoritmo_Reemplazo,"LRU"))==0){
+		t_marcoProceso* frameCambio = sacarMarcoProceso(proc->framesAsignados,entradaTablaPag->frame);
+		list_add(proc->framesAsignados,frameCambio);
+	}
+
 	grabarEnMemoria(entradaTablaPag->frame,contenido);
+	t_marcoProceso* frameProc = buscarMarcoProceso(proc->framesAsignados,entradaTablaPag->frame);
+	frameProc->modificado=1;
+	frameProc->uso=1;
 
 	printf("\n GRABANDO EN MP CONTENIIDO %s\n", contenido);
 
@@ -771,9 +832,59 @@ void informarEscribir(char* buffer){
 	printf("\n ENVIANDO A CPU: %s\n", resultado);
 	escribirCpu(la_cpu->ip,la_cpu->puerto, resultado);
 	}else{
+	//Cuando escribo una pagina que no estaba cargada tengo que traerla de swap
+	// y solo escribo en Swap cuando la reemplazoy fue modificada
 	sem_wait(&sem_swap);
-	escribirSwap(CharAToInt(pid),CharAToInt(num_pag),contenido);
+	char* contenido= leerSwapEscribir(CharAToInt(pid),CharAToInt(num_pag));
+	//escribirSwap(CharAToInt(pid),CharAToInt(num_pag),contenido);
 	sem_post(&sem_swap);
+
+	//CARGO PAGINA EN MP
+		entrada_tablaProcesos * proc = buscarPorId(CharAToInt(pid));
+	//Conseguimos la entrada de la tabla de paginas:
+		entrada_tablaPags * entradaTablaPag = buscarPagina(proc, CharAToInt(num_pag));
+
+		if(list_size(proc->framesAsignados)<=g_Max_Marcos_Proc){
+
+			printf("\nCargando Pagina a MP... \n");
+			t_frame * marcoLibre;
+			marcoLibre = buscarFrameLibre();
+					if(marcoLibre==NULL){
+						printf("No hay marco libre"); //TODO: ACA FINALIZAR EL PROCESO?
+					}
+			//Sumo uno a los frames asignados al procesoS
+			list_add(proc->framesAsignados,marcoProceso_create(marcoLibre->frameNro));
+
+			//ASIGNAMOS ESE FRAME AL PROCESO.
+			grabarEnMemoria(marcoLibre->frameNro, contenido);
+
+			marcoLibre->pid=CharAToInt(pid);
+			marcoLibre->pagina = CharAToInt(num_pag);
+
+			entradaTablaPag->frame=marcoLibre->frameNro;
+			marcoLibre->usado=1;
+			entradaTablaPag->presenteEnMemoria=1;
+
+
+			t_marcoProceso* frameProc = buscarMarcoProceso(proc->framesAsignados,entradaTablaPag->frame);
+			frameProc->modificado=1;
+			frameProc->uso=1;
+
+			printf("\nel proceso %d, pagina %d, CONTENIDO CARGADO %s \n", marcoLibre->pid,marcoLibre->pagina, contenido);
+
+		} else {
+			//Si los marcos asignados al proceso estan llenos correr algoritmo de remplazo
+			correrAlgoritmo(proc,entradaTablaPag, contenido, 2);
+		}
+
+	//Busco la CPU en la lista donde se esta ejecutando el proceso.
+	t_cpu* la_cpu = buscarCPUporPid(CharAToInt(pid));
+	char* resultado = string_new();
+	//string_append(&resultado,"1"); //TODO OJO QUE ESTA HARDCODEADO!!
+	string_append(&resultado,obtenerSubBuffer(num_pag));
+	string_append(&resultado,obtenerSubBuffer(contenido));
+	escribirCpu(la_cpu->ip,la_cpu->puerto,resultado);
+
 	}
 }
 
@@ -936,15 +1047,11 @@ void resultadoLecturaSwap(char* buffer){
 			marcoLibre->usado=1;
 			entradaTablaPag->presenteEnMemoria=1;
 
-			//TODO: SI EL PROCESO TIENE TODOS SUS MARCOS LLENOS, CORRER ALGO DE REEMPLAZO
-
-
-
 			printf("\nel proceso %d, pagina %d, CONTENIDO CARGADO %s \n", marcoLibre->pid,marcoLibre->pagina, contenido);
 
 		} else {
 			//Si los marcos asignados al proceso estan llenos correr algoritmo de remplazo
-			correrAlgoritmo(proc,entradaTablaPag, contenido);
+			correrAlgoritmo(proc,entradaTablaPag, contenido, 1);
 		}
 
 	//Busco la CPU en la lista donde se esta ejecutando el proceso.
@@ -965,9 +1072,11 @@ void resultadoEscrituraSwap(char* buffer){
 	resultado = (buffer+posActual);
 		printf("RESULTADO:%s\n", resultado);
 	//Busco la CPU en la lista donde se esta ejecutando el proceso.
-	t_cpu* la_cpu = buscarCPUporPid(CharAToInt(pid));
+	//t_cpu* la_cpu = buscarCPUporPid(CharAToInt(pid));
 
-	escribirCpu(la_cpu->ip,la_cpu->puerto, resultado);
+	//escribirCpu(la_cpu->ip,la_cpu->puerto, resultado);
+
+	//Cuando escribe swap no retrona a cpu
 
 }
 
@@ -1163,12 +1272,12 @@ t_frame * buscarFrameLibre(){
 		return marcoLibre;
 }
 
-t_frame * sacarFramePorNumero(int nroFrame){
-	t_frame* marcoLibre = malloc(sizeof(t_frame));
+t_marcoProceso * sacarMarcoProceso(t_list* listaFrames, int nroFrame){
+	t_marcoProceso* marcoLibre = malloc(sizeof(t_marcoProceso));
 	bool _true(void *elem) {
-				return (((t_frame*) elem)->frameNro == nroFrame);
+				return (((t_marcoProceso*) elem)->frameNro == nroFrame);
 			}
-		marcoLibre = list_remove_by_condition(marcos, _true);
+		marcoLibre = list_remove_by_condition(listaFrames, _true);
 		return marcoLibre;
 }
 
@@ -1228,9 +1337,9 @@ int grabarEnMemoria(int nroMarco, char * texto) {
  return 1;
 }
 
-void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas, char* contenido){
+void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas, char* contenido, int operacion){
 	printf("\nESTOY CORRIENDO EL ALGORITMO DE REEMPLAZO!!\n");
-
+	//operacion es para saber si vino de lectura o escritura, 1 es lectura y 2 escritura para los bits de uso y modificacion de Clock modificado
 	if((strcmp(g_Algoritmo_Reemplazo,"FIFO"))==0 || (strcmp(g_Algoritmo_Reemplazo,"LRU"))==0){
 	//FIFO y LRU se manejan igual salvo cuando leen o escriben una pagina que ya estaba cargada.
 	t_marcoProceso* el_marco =list_remove(proceso->framesAsignados,0);
@@ -1238,17 +1347,99 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 	if(el_marco->modificado==1){
 		//Si el marco fue modificado cargarlo devuelta a swap
 		leerEnMP(el_marco->frameNro);
-		escribirSwap(proceso->pid,tPaginas->pagN,leerEnMP(el_marco->frameNro)); //TODO Ver de hacer otra funcion que no retorne a CPU
+		escribirSwapReemplazo(proceso->pid,tPaginas->pagN,leerEnMP(el_marco->frameNro)); //TODO Ver de hacer otra funcion que no retorne a CPU
 	}
 	 	grabarEnMemoria(el_marco->frameNro, contenido);
 	 	t_frame * marcoModif;
 		marcoModif = buscarFramePorNumero(el_marco->frameNro);
 		marcoModif->pagina=tPaginas->pagN;
 
-	list_add(proceso->framesAsignados,el_marco);
-	//Vuevlo a agregarlo al final de la lista
 
-	} else if((strcmp(g_Algoritmo_Reemplazo,"CLOCK-M"))==0){
+	list_add(proceso->framesAsignados,el_marco);
+	//Vuelvo a agregarlo al final de la lista
+
+	} //Algoritmo clock modificado
+	else if((strcmp(g_Algoritmo_Reemplazo,"CLOCK-M"))==0){
+		t_marcoProceso* el_marco;
+		int primerCheck=0, segundoCheck=0, tercerCheck=0;
+		int punteroAux = punteroClock;
+		//Para saber cuando ya recorrí todos los marcos.
+
+
+	//Primer chequeo buscando Uso=0 y Modificacion=0
+	while(primerCheck==0){
+		el_marco=list_get(proceso->framesAsignados,punteroClock);
+		punteroClock++;
+
+		if(punteroClock==list_size(proceso->framesAsignados)){
+		punteroClock=0;  //El puntero va de 0 a CantMarcos-1 , si es igual a list size hay que reiniciarlo a 0
+		}
+
+		if((el_marco->modificado==0 && el_marco->uso==0)){
+			primerCheck=1; //1 encontro el marco para cambiar
+		}
+
+		if(punteroAux==punteroClock){
+			primerCheck=2; //2 salio por haber recorrido todos
+		}
+	}
+
+	//Segundo chequeo buscando Uso=0 y Modificacion=1 cambiando el bit de uso a medida que avanzo
+	while(primerCheck==2 && segundoCheck == 0){
+		el_marco=list_get(proceso->framesAsignados,punteroClock);
+		punteroClock++;
+
+		if(punteroClock==list_size(proceso->framesAsignados)){
+		punteroClock=0;  //El puntero va de 0 a CantMarcos-1 , si es igual a list size hay que reiniciarlo a 0
+		}
+
+		if((el_marco->modificado==1 && el_marco->uso==0)){
+			segundoCheck=1; //1 encontro el marco para cambiar
+		}else{
+			el_marco->uso=0;
+		}
+
+		if(punteroAux==punteroClock){
+			segundoCheck=2; //2 salio por haber recorrido todos
+		}
+
+	}
+
+	//Tercer chequeo igual al primero
+	while(primerCheck==2 && segundoCheck == 2 && tercerCheck==0){
+		el_marco=list_get(proceso->framesAsignados,punteroClock);
+		punteroClock++;
+
+		if(punteroClock==list_size(proceso->framesAsignados)){
+		punteroClock=0;  //El puntero va de 0 a CantMarcos-1 , si es igual a list size hay que reiniciarlo a 0
+		}
+
+		if((el_marco->modificado==0 && el_marco->uso==0)){
+			tercerCheck=1; //1 encontro el marco para cambiar
+		}
+
+		if(punteroAux==punteroClock){
+			tercerCheck=2; //2 salio por haber recorrido todos
+		}
+	}
+
+	if(el_marco->modificado==1){
+		//Si el marco fue modificado cargarlo devuelta a swap
+		escribirSwapReemplazo(proceso->pid,tPaginas->pagN,leerEnMP(el_marco->frameNro)); //TODO Ver de hacer otra funcion que no retorne a CPU
+	}
+
+	grabarEnMemoria(el_marco->frameNro, contenido);
+	t_frame * marcoModif;
+	marcoModif = buscarFramePorNumero(el_marco->frameNro);
+	marcoModif->pagina=tPaginas->pagN;
+
+	if(operacion==1){ //es LECTURA
+	el_marco->uso=1;
+	}
+	else if(operacion==2){ //es ESCRITURA
+	el_marco->uso=1;
+	el_marco->modificado=1;
+	}
 
 	}
 }
