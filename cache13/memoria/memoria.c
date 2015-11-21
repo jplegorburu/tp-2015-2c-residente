@@ -758,8 +758,7 @@ void informarLeer(char* buffer){
 		content = leerEnMP(entradaTablaPag->frame);
 
 		if((strcmp(g_Algoritmo_Reemplazo,"LRU"))==0){
-			t_marcoProceso* frameCambio = sacarMarcoProceso(proc->framesAsignados,entradaTablaPag->frame);
-			list_add(proc->framesAsignados,frameCambio);
+			sacarMarcoProceso(proc->framesAsignados,entradaTablaPag->frame);
 		}
 
 		t_marcoProceso* frameProc = buscarMarcoProceso(proc->framesAsignados,entradaTablaPag->frame);
@@ -776,6 +775,7 @@ void informarLeer(char* buffer){
 		sem_post(&sem_swap);
 	}
 
+	mostrarTabaPaginas(CharAToInt(pid));
 
 }
 
@@ -813,8 +813,7 @@ void informarEscribir(char* buffer){
 	if(entradaTablaPag->presenteEnMemoria==1){
 
 	if((strcmp(g_Algoritmo_Reemplazo,"LRU"))==0){
-		t_marcoProceso* frameCambio = sacarMarcoProceso(proc->framesAsignados,entradaTablaPag->frame);
-		list_add(proc->framesAsignados,frameCambio);
+		sacarMarcoProceso(proc->framesAsignados,entradaTablaPag->frame);
 	}
 
 	grabarEnMemoria(entradaTablaPag->frame,contenido);
@@ -835,7 +834,7 @@ void informarEscribir(char* buffer){
 	//Cuando escribo una pagina que no estaba cargada tengo que traerla de swap
 	// y solo escribo en Swap cuando la reemplazoy fue modificada
 	sem_wait(&sem_swap);
-	char* contenido= leerSwapEscribir(CharAToInt(pid),CharAToInt(num_pag));
+	char* contenido2 = leerSwapEscribir(CharAToInt(pid),CharAToInt(num_pag)); //esto no hace nada mas que contemplar el retardo swap
 	//escribirSwap(CharAToInt(pid),CharAToInt(num_pag),contenido);
 	sem_post(&sem_swap);
 
@@ -844,7 +843,8 @@ void informarEscribir(char* buffer){
 	//Conseguimos la entrada de la tabla de paginas:
 		entrada_tablaPags * entradaTablaPag = buscarPagina(proc, CharAToInt(num_pag));
 
-		if(list_size(proc->framesAsignados)<=g_Max_Marcos_Proc){
+		printf("\nLA LISTA TIENE %d MARCOS\n",list_size(proc->framesAsignados));
+		if(list_size(proc->framesAsignados)<g_Max_Marcos_Proc){
 
 			printf("\nCargando Pagina a MP... \n");
 			t_frame * marcoLibre;
@@ -886,6 +886,8 @@ void informarEscribir(char* buffer){
 	escribirCpu(la_cpu->ip,la_cpu->puerto,resultado);
 
 	}
+
+	mostrarTabaPaginas(CharAToInt(pid));
 }
 
 
@@ -1024,7 +1026,7 @@ void resultadoLecturaSwap(char* buffer){
 	//Conseguimos la entrada de la tabla de paginas:
 		entrada_tablaPags * entradaTablaPag = buscarPagina(proc, CharAToInt(pagina));
 
-		if(list_size(proc->framesAsignados)<=g_Max_Marcos_Proc){
+		if(list_size(proc->framesAsignados)<g_Max_Marcos_Proc){
 
 			printf("\nCargando Pagina a MP... \n");
 			t_frame * marcoLibre;
@@ -1263,6 +1265,17 @@ entrada_tablaPags * buscarPagina(entrada_tablaProcesos * proc, int numPag){
 	return entradaTablaPag;
 	}
 
+entrada_tablaPags * buscarPaginaPorMarco(entrada_tablaProcesos * proc, int marco){
+	bool _true(void *elem) {
+			return (((entrada_tablaPags*) elem)->frame == marco);
+		}
+	entrada_tablaPags * entradaTablaPag;
+	entradaTablaPag = list_find(proc->tablaPags, _true);
+
+	return entradaTablaPag;
+	}
+
+
 t_frame * buscarFrameLibre(){
 	t_frame* marcoLibre = malloc(sizeof(t_frame));
 	bool _true(void *elem) {
@@ -1272,13 +1285,14 @@ t_frame * buscarFrameLibre(){
 		return marcoLibre;
 }
 
-t_marcoProceso * sacarMarcoProceso(t_list* listaFrames, int nroFrame){
+void sacarMarcoProceso(t_list* listaFrames, int nroFrame){
 	t_marcoProceso* marcoLibre = malloc(sizeof(t_marcoProceso));
 	bool _true(void *elem) {
 				return (((t_marcoProceso*) elem)->frameNro == nroFrame);
 			}
 		marcoLibre = list_remove_by_condition(listaFrames, _true);
-		return marcoLibre;
+		list_add(listaFrames,marcoLibre);
+		//return marcoLibre;
 }
 
 t_frame * buscarFramePorNumero(int nroFrame){
@@ -1341,19 +1355,28 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 	printf("\nESTOY CORRIENDO EL ALGORITMO DE REEMPLAZO!!\n");
 	//operacion es para saber si vino de lectura o escritura, 1 es lectura y 2 escritura para los bits de uso y modificacion de Clock modificado
 	if((strcmp(g_Algoritmo_Reemplazo,"FIFO"))==0 || (strcmp(g_Algoritmo_Reemplazo,"LRU"))==0){
+
 	//FIFO y LRU se manejan igual salvo cuando leen o escriben una pagina que ya estaba cargada.
 	t_marcoProceso* el_marco =list_remove(proceso->framesAsignados,0);
+	printf("\nLA marco %d, uso %d, modif: %d\n",el_marco->frameNro, el_marco->uso,el_marco->modificado);
+
+	entrada_tablaPags * entrTP= buscarPaginaPorMarco(proceso, el_marco->frameNro);
+	printf("\nLA PAGINA %d, FRAME %d, PReSENTE EN MP: %d\n",entrTP->pagN, entrTP->frame,entrTP->presenteEnMemoria);
 
 	if(el_marco->modificado==1){
 		//Si el marco fue modificado cargarlo devuelta a swap
-		leerEnMP(el_marco->frameNro);
-		escribirSwapReemplazo(proceso->pid,tPaginas->pagN,leerEnMP(el_marco->frameNro)); //TODO Ver de hacer otra funcion que no retorne a CPU
+		char * lecMP= leerEnMP(el_marco->frameNro);
+		escribirSwapReemplazo(proceso->pid,entrTP->pagN,lecMP);//TODO: Que escribirSwapReemplazo devuelva 1 para que salga t0do bien
 	}
 	 	grabarEnMemoria(el_marco->frameNro, contenido);
 	 	t_frame * marcoModif;
 		marcoModif = buscarFramePorNumero(el_marco->frameNro);
 		marcoModif->pagina=tPaginas->pagN;
 
+		tPaginas->presenteEnMemoria=1;
+		tPaginas->frame=el_marco->frameNro;
+		entrTP->presenteEnMemoria=0;
+		entrTP->frame=-1;
 
 	list_add(proceso->framesAsignados,el_marco);
 	//Vuelvo a agregarlo al final de la lista
@@ -1422,10 +1445,11 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 			tercerCheck=2; //2 salio por haber recorrido todos
 		}
 	}
+	entrada_tablaPags * entrTP= buscarPaginaPorMarco(proceso, el_marco->frameNro);
 
 	if(el_marco->modificado==1){
 		//Si el marco fue modificado cargarlo devuelta a swap
-		escribirSwapReemplazo(proceso->pid,tPaginas->pagN,leerEnMP(el_marco->frameNro)); //TODO Ver de hacer otra funcion que no retorne a CPU
+		escribirSwapReemplazo(proceso->pid,entrTP->pagN,leerEnMP(el_marco->frameNro)); //TODO Ver de hacer otra funcion que no retorne a CPU
 	}
 
 	grabarEnMemoria(el_marco->frameNro, contenido);
@@ -1442,4 +1466,24 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 	}
 
 	}
+}
+
+void mostrarTabaPaginas(int pid){
+
+	printf("------------------------------------------------------\nTabla de paginas: \n");
+
+	int index=0;
+	entrada_tablaProcesos *proc = malloc(sizeof(entrada_tablaProcesos));
+
+	proc = buscarPorId(pid);
+
+	entrada_tablaPags * entrada = list_get(proc->tablaPags, index);
+	while(entrada!=NULL){
+		printf("Frame: %d  //   Pagina: %d    //   Presente: %d\n", entrada->frame, entrada->pagN, entrada->presenteEnMemoria);
+		index++;
+		entrada = list_get(proc->tablaPags, index);
+	}
+
+	//free(entrada);
+	//free(proc);
 }

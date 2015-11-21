@@ -115,7 +115,7 @@ typedef struct{
 entrada_tablaPags *entradaTablaPags_create(int i) {
 	entrada_tablaPags *new = malloc(sizeof(entrada_tablaPags));
 	new->pagN = i;
-	new->frame = 0;
+	new->frame = -1;
 	new->presenteEnMemoria = 0;
 	return new;
 }
@@ -216,4 +216,6 @@ char* leerEnMP(int nroMarco);
 int grabarEnMemoria(int nroMarco,  char * texto);
 void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas, char* contenido, int operacion);
 t_marcoProceso * buscarMarcoProceso(t_list* listaFrames, int nroFrame);
-t_marcoProceso * sacarMarcoProceso(t_list* listaFrames, int nroFrame);
+void sacarMarcoProceso(t_list* listaFrames, int nroFrame);
+entrada_tablaPags * buscarPaginaPorMarco(entrada_tablaProcesos * proc, int marco);
+void mostrarTabaPaginas(int pid);
