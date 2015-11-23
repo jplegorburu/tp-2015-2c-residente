@@ -102,6 +102,7 @@ typedef struct {
 	char * ip;
 	char * puerto;
 	int estado;
+	int porcentaje;
 } t_cpu;
 
 t_cpu *cpu_create(int id, char *ipCpu, char* puertoCpu, int activo) {
@@ -110,6 +111,7 @@ t_cpu *cpu_create(int id, char *ipCpu, char* puertoCpu, int activo) {
 	new->ip = strdup(ipCpu);
 	new->puerto = strdup(puertoCpu);
 	new->estado = activo;
+	new->porcentaje = 0;
 	return new;
 }
 
@@ -179,3 +181,4 @@ int procesoBloqueado(char* buffer);
 int CharAToInt(char* x);
 void planificar();
 int atiendeEntrdaSalida(void * arguments);
+int completoPorcentaje(char* buffer);

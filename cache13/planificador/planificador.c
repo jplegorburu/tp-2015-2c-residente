@@ -269,6 +269,7 @@ void recorrerCpu() {
 		printf("La IP:" COLOR_VERDE"%s\n"DEFAULT, la_cpu->ip);
 		printf("El Puerto:"COLOR_VERDE"%s\n"DEFAULT, la_cpu->puerto);
 		printf("Estado:"COLOR_VERDE "%d\n"DEFAULT, la_cpu->estado);
+		printf("Porcentaje de uso:"COLOR_VERDE "%d \n"DEFAULT, la_cpu->porcentaje);
 		i++;
 	}
 }
@@ -400,6 +401,35 @@ int AtiendeCpu(char* buffer) {
 	int id = list_size(lista_cpu) + 1;
 	la_cpu = cpu_create(id, la_Ip, el_Puerto, 0);
 	list_add(lista_cpu, la_cpu);
+
+	return 1;
+}
+
+int completoPorcentaje(char* buffer) {
+
+	char *el_Puerto,*el_Porcentaje;
+	int digitosPuerto;
+	int posActual = 0;
+	t_cpu* la_cpu = malloc(sizeof(t_cpu));
+	//printf("Buffer de porcentaje recibido: %s \n",buffer);
+	//BUFFER RECIBIDO = 151445001220
+	//1: es cpu 5: Recibo Porcentaje 144500: el puerto 1220: Porcentaje
+
+	digitosPuerto = PosicionDeBufferAInt(buffer, 2);
+	posActual = 1 + digitosPuerto;
+
+	el_Puerto = DigitosNombreArchivo(buffer, &posActual);
+	el_Porcentaje = DigitosNombreArchivo(buffer, &posActual);
+	//printf("PUERTO:%s\n",el_Puerto);
+	//printf("Porcentaje:%s\n",el_Porcentaje);
+
+	bool _true(void *elem) {
+		return (!strcmp(((t_cpu*) elem)->puerto,el_Puerto));
+	}
+	la_cpu = list_find(lista_cpu, _true);
+	if (la_cpu != NULL) {
+		la_cpu->porcentaje = CharAToInt(el_Porcentaje);
+	}
 
 	return 1;
 }
@@ -655,7 +685,7 @@ int AtiendeCliente(void * arg) {
 						break;
 
 					case EJECUCION_CPU:
-						if (1) {
+						if (completoPorcentaje(buffer)) {
 							//Carga en las CPU correspondiente el % de ejecucion recibido
 
 							mensaje = "Ok";

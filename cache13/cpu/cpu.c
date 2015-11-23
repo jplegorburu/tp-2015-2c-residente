@@ -521,16 +521,13 @@ int AtiendeCliente(void * arg) {
 						switch (emisor) {
 						case 2:
 							printf("\nCPU Buffer RECIBIDO: %s\n",buffer);
+							//buffer=string_new();
+							//string_append(&buffer,"22");
 							funcion = ObtenerComandoMSJ(buffer+1);
 							if(funcion==1){
 								//buffer="";
 								//char* buffer1 = string_new();
 								//string_append(&buffer1,"21113273/home/utnso/workspace/tp-2015-2c-residente/cache13/planificador/corto.cod11121112345678909");
-								//printf("Funcion de Ejecucion\n");
-								//printf("Buffer : %s\n",buffer1);
-								//printf("PID %d\n",obtenerPID(buffer));
-								//printf("Direccion: %s\n",obtenerDireccion(buffer));
-								//printf("Instruccion: %s\n",obtenerProximaInstruccion(buffer));
 								printf("QUANTUM: %d\n",CharAToInt(obtenerQuantum(buffer)));
 
 								t_global* la_global = buscarGlobalPorPuerto(puerto);
@@ -543,6 +540,7 @@ int AtiendeCliente(void * arg) {
 							if(funcion==2){
 								//Solicitud de estado de CPU
 								printf("Solicitud de estado de CPU\n");
+
 							}
 							mensaje="ok";
 							break;
@@ -875,7 +873,7 @@ char* obtenerQuantum(char* buffer){
 
 	int cantDigPID, cantDigDIR, cantDIR,posicion,cantPID,cantDigProxInt,cantProxInt,cantDigQuantum,cantQuantum;
 	int j=0,i=0,x=0;
-	char *direccion;
+	char *quantum;
 
 	cantDigPID = ObtenerComandoMSJ(buffer + 2);
 	cantPID = ObtenerTamanio(buffer,3,cantDigPID);
@@ -887,16 +885,13 @@ char* obtenerQuantum(char* buffer){
 	cantDigQuantum = ObtenerComandoMSJ(buffer + 2 + cantDigPID + cantPID + cantDigDIR + cantDIR + cantDigProxInt + cantProxInt + 3);
 	cantQuantum = ObtenerTamanio(buffer,3 + cantDigPID + cantPID + cantDIR + cantDigDIR + cantDigProxInt + cantProxInt + 3,cantDigQuantum);
 	posicion= 2 + cantDigPID + 1 + cantPID + cantDIR + cantDigDIR + 1 + cantDigProxInt + cantProxInt + 1 + cantDigQuantum + 1;
-	printf("cantDigQuantum %d  \n",cantDigQuantum);
-	printf("cantQuantum %d  \n",cantQuantum);
-	printf("posicion %d  \n",posicion);
-	direccion = malloc(cantQuantum + 1);
+	quantum = malloc(cantQuantum + 1);
 		for (j = posicion + i; j < posicion + i + cantQuantum; j++) {
-			direccion[x] = buffer[j];
+			quantum[x] = buffer[j];
 			x++;
 		}
-	direccion[x] = '\0';
-	return direccion;
+	quantum[x] = '\0';
+	return quantum;
 }
 
 char* obtenerProximaInstruccion(char* buffer){
@@ -1036,26 +1031,38 @@ char* DigitosNombreArchivo(char *buffer, int *posicion) {
 }
 
 void calcularTiempoEjecucion (void* arg){
+int socket_Plani;
+conectarPlanificador(&socket_Plani);
 puerto=(int)arg;
 int tiempoEjec=0;
 int segundos = 0;
+char* buffer = string_new();
 while(1){
-	t_global* la_global = buscarGlobalPorPuerto(puerto);
-	//semaforo
-	if(la_global->estaEjecutando==1){
-		tiempoEjec++;
+		t_global* la_global = buscarGlobalPorPuerto(puerto);
+		//semaforo
+		if(la_global->estaEjecutando==1){
+			tiempoEjec++;
+		}
+		//semaforo
+		sleep(1);
+
+		segundos=segundos+1;
+
+		if (segundos==60){
+		la_global->porcentajeEjec = ((tiempoEjec*100)/segundos);
+		segundos=0;
+		tiempoEjec=0;
+		buffer = string_new();
+		string_append(&buffer,"15");
+		string_append(&buffer,obtenerSubBuffer(string_itoa(puerto)));
+		string_append(&buffer,obtenerSubBuffer(string_itoa(la_global->porcentajeEjec)));
+		//string_append(&buffer,obtenerSubBuffer(string_itoa(23)));
+		//printf("(Porcentaje) ENVIADO a PLANIFICADOR: %s\n",buffer);
+
+		if(EnviarDatos(socket_Plani, buffer,strlen(buffer))==-1){
+			printf("Error al enviar porcentaje\n");
+		};
+		}
 	}
-	//semaforo
-	sleep(1);
-
-	segundos=segundos+1;
-
-	if (segundos==60){
-	la_global->porcentajeEjec = ((tiempoEjec*100)/segundos);
-	segundos=0;
-	tiempoEjec=0;
-	printf("\nEL PORCENTAJE DE EJECUCION ES: %d porciento\n",la_global->porcentajeEjec);
-	}
-
 }
-}
+

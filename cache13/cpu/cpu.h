@@ -133,3 +133,5 @@ int escribirPlanificador(char* buffer);
 char* obtenerQuantum(char* buffer);
 int finQuantum(int pid);
 void calcularTiempoEjecucion (void* arg);
+void enviarPorcentaje();
+
