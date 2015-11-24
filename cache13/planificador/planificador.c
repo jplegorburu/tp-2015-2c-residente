@@ -260,16 +260,17 @@ char* obtenerRutaArchivo(char* archivo) {
 }
 
 void recorrerCpu() {
-	t_cpu * la_cpu;
+	t_cpu * la_cpu2;
 
 	int i = 0;
-	while (i < list_size(lista_cpu)) {
-		la_cpu = list_get(lista_cpu, i);
-		printf("Id Cpu:"COLOR_VERDE "%d\n"DEFAULT, la_cpu->id);
-		printf("La IP:" COLOR_VERDE"%s\n"DEFAULT, la_cpu->ip);
-		printf("El Puerto:"COLOR_VERDE"%s\n"DEFAULT, la_cpu->puerto);
-		printf("Estado:"COLOR_VERDE "%d\n"DEFAULT, la_cpu->estado);
-		printf("Porcentaje de uso:"COLOR_VERDE "%d \n"DEFAULT, la_cpu->porcentaje);
+	int cantCPU=list_size(lista_cpu);
+	while (i < cantCPU) {
+		la_cpu2 = list_get(lista_cpu, i);
+		printf("Id Cpu:"COLOR_VERDE "%d\n"DEFAULT, la_cpu2->id);
+		printf("La IP:" COLOR_VERDE"%s\n"DEFAULT, la_cpu2->ip);
+		printf("El Puerto:"COLOR_VERDE"%s\n"DEFAULT, la_cpu2->puerto);
+		printf("Estado:"COLOR_VERDE "%d\n"DEFAULT, la_cpu2->estado);
+		printf("Porcentaje de uso:"COLOR_VERDE "%d \n"DEFAULT, la_cpu2->porcentaje);
 		i++;
 	}
 }

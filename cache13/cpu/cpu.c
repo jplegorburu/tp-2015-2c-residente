@@ -520,7 +520,7 @@ int AtiendeCliente(void * arg) {
 			//Evaluamos los comandos
 						switch (emisor) {
 						case 2:
-							printf("\nCPU Buffer RECIBIDO: %s\n",buffer);
+							//printf("\nCPU Buffer RECIBIDO: %s\n",buffer);
 							//buffer=string_new();
 							//string_append(&buffer,"22");
 							funcion = ObtenerComandoMSJ(buffer+1);
@@ -528,7 +528,7 @@ int AtiendeCliente(void * arg) {
 								//buffer="";
 								//char* buffer1 = string_new();
 								//string_append(&buffer1,"21113273/home/utnso/workspace/tp-2015-2c-residente/cache13/planificador/corto.cod11121112345678909");
-								printf("QUANTUM: %d\n",CharAToInt(obtenerQuantum(buffer)));
+								//printf("QUANTUM: %d\n",CharAToInt(obtenerQuantum(buffer)));
 
 								t_global* la_global = buscarGlobalPorPuerto(puerto);
 								la_global->pidGlobal=obtenerPID(buffer);
@@ -600,7 +600,8 @@ int AtiendeCliente(void * arg) {
 								sem_post(&(la_global->sPlanificador));
 							}
 
-							sem_post(&(la_global->sProxInstruccion));
+								sem_post(&(la_global->sProxInstruccion));
+
 							//Una vez que recibo la respuesta de memoria activo el semaforo para que siga con la siguiente intruccion.
 
 							mensaje="ok";
@@ -649,7 +650,9 @@ do{
 	//Busco en la lista por puerto, y le resto uno al semaforo para que se bloquee esperando la respuesta de memoria
 	sem_wait(&(la_global->sProxInstruccion));
 	la_global->instrucRealizadasGlobal++;
-	printf("\n (%d) Nro Inst: %d. RESULTADO PARCIAL: %s\n",la_global->puerto,la_global->instrucRealizadasGlobal, la_global->resultado);
+	printf("\n (%d) ID:%d || Nro Inst: %d de %d. \n",la_global->puerto,la_global->pidGlobal,la_global->instrucRealizadasGlobal,quantum);
+	printf("\n RESULTADO PARCIAL: %s\n",la_global->resultado);
+
 
 	if(pasos==quantum){
 		la_global->finQuantum=1;
@@ -749,7 +752,9 @@ int finQuantum(int pid){
 	la_global->finQuantum =0;
 	la_global->estaEjecutando =0;
 	la_global->resultado=string_new();
-
+	//new->porcentajeEjec =0;
+	sem_init(&(la_global->sProxInstruccion),0,1);
+	sem_init(&(la_global->sPlanificador),0,0);
 	//AGREGAR RESULTADO PARCIAL
 	return EnviarDatos(socket_Plani, buffer,strlen(buffer));
 }
@@ -823,7 +828,7 @@ int entradaSalida(int tiempo,int pid){
 }
 
 int finalizar(int pid){
-	//printf("SOY EL PUERTO:%d",puerto);
+	//ACA ENVIO A MEMORIA
 	int socket_Memoria;
 	conectarMemoria(&socket_Memoria);
 	//12+puerto+pid
@@ -852,8 +857,9 @@ int finalizarPlanificador(){
 	la_global->finError =0;
 	la_global->finQuantum =0;
 	la_global->estaEjecutando =0;
-	//free(la_global->resultado);
 	la_global->resultado=string_new();
+	sem_init(&(la_global->sProxInstruccion),0,1);
+	sem_init(&(la_global->sPlanificador),0,0);
 	printf("(FIN) ENVIADO a PLANIFICADOR: %s\n",buffer);
 	return EnviarDatos(socket_Plani, buffer,strlen(buffer));
 }

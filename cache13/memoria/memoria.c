@@ -1393,7 +1393,7 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 	while(primerCheck==0){
 		el_marco=list_get(proceso->framesAsignados,punteroClock);
 		punteroClock++;
-
+	//	printf("Marco: %d || Mod: %d || Uso: %d \n",el_marco->frameNro,el_marco->modificado,el_marco->uso);
 		if(punteroClock==list_size(proceso->framesAsignados)){
 		punteroClock=0;  //El puntero va de 0 a CantMarcos-1 , si es igual a list size hay que reiniciarlo a 0
 		}
@@ -1456,6 +1456,11 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 	t_frame * marcoModif;
 	marcoModif = buscarFramePorNumero(el_marco->frameNro);
 	marcoModif->pagina=tPaginas->pagN;
+
+	tPaginas->presenteEnMemoria=1;
+	tPaginas->frame=el_marco->frameNro;
+	entrTP->presenteEnMemoria=0;
+	entrTP->frame=-1;
 
 	if(operacion==1){ //es LECTURA
 	el_marco->uso=1;
