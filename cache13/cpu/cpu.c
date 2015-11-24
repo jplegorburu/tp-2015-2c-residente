@@ -595,10 +595,12 @@ int AtiendeCliente(void * arg) {
 								}
 
 							t_global* la_global = buscarGlobalPorPuerto(puerto);
-							sem_post(&(la_global->sProxInstruccion));
+
 							if(la_global->finQuantum==1){
 								sem_post(&(la_global->sPlanificador));
 							}
+
+							sem_post(&(la_global->sProxInstruccion));
 							//Una vez que recibo la respuesta de memoria activo el semaforo para que siga con la siguiente intruccion.
 
 							mensaje="ok";
