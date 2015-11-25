@@ -4,7 +4,7 @@
 int main(int argv, char** argc) {
 
 	//Archivo de Log
-	logger = log_create(NOMBRE_ARCHIVO_LOG, "planificador", true, LOG_LEVEL_TRACE);
+	logger = log_create(NOMBRE_ARCHIVO_LOG, "CPU", true, LOG_LEVEL_TRACE);
 	lista_global=list_create();
 	// Levantamos el archivo de configuracion.
 	LevantarConfig();
@@ -53,6 +53,10 @@ void iniciarCpu(void* arg){
 	printf("Hola entre, puerto: %d\n", puerto);
 	conectarsePlanificador(puerto);
 	conectarseMemoria(puerto);
+
+	//Grabo que se conecto ok a la memoria en el LOG:
+	grabarLog(" - Se conecto con memoria","I");
+
 	//crearEscucha();
 	HiloOrquestadorDeConexiones(puerto);
 
@@ -125,7 +129,7 @@ void conectarseMemoria(int puertoCpu){
 				free(bufferR);
 				free(bufferE);
 				} else {
-					printf("No se pudo conectar al Planificador\n");
+					printf("No se pudo conectar a la memoria\n");
 				}
 }
 
@@ -185,70 +189,99 @@ int ObtenerTamanio (char *buffer , int posicion, int dig_tamanio){
 	return aux;
 }
 
+void grabarLog(char *mensaje, char *tLog ){
+	//1 INFO || 2 ERROR || 3 WARNING || 4 DEBUG || 5 TRACE
+	//
+	char *msj;
+	msj=string_new();
+	string_append(&msj,string_itoa(puerto));
+	string_append(&msj,mensaje);
+	if(strcmp(tLog,"T")==0){
+		log_trace(logger, msj);
+	}
+	else if(strcmp(tLog,"E")==0){
+		log_error(logger, msj);
+	}
+	else if(strcmp(tLog,"I")==0){
+		log_info(logger, msj);
+	}
+	else if(strcmp(tLog,"W")==0){
+		log_warning(logger, msj);
+	}
+	else if(strcmp(tLog,"D")==0){
+		log_debug(logger, msj);
+	}
+	else
+	{ printf("Grabacion incorrecta en LOG\n");
+	}
+}
+
 int conectarPlanificador(int *socket_plani){
 	//Conecto al planificador
 	//ESTRUCTURA DE SOCKETS; EN ESTE CASO CONECTA CON NODO
-		//log_info(logger, "Intentando conectar a nodo\n");
-		//conectar con Nodo
-		struct addrinfo hints;
-		struct addrinfo *serverInfo;
-		int conexionOk = 0;
 
-		memset(&hints, 0, sizeof(hints));
-		hints.ai_family = AF_UNSPEC;// Permite que la maquina se encargue de verificar si usamos IPv4 o IPv6
-		hints.ai_socktype = SOCK_STREAM;	// Indica que usaremos el protocolo TCP
+	//conectar con Nodo
+	struct addrinfo hints;
+	struct addrinfo *serverInfo;
+	int conexionOk = 0;
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;// Permite que la maquina se encargue de verificar si usamos IPv4 o IPv6
+	hints.ai_socktype = SOCK_STREAM;	// Indica que usaremos el protocolo TCP
 
+	if (getaddrinfo(g_Ip_Planificador, g_Puerto_Planificador, &hints, &serverInfo) != 0) {// Carga en serverInfo los datos de la conexion
+		grabarLog(" - ERROR: cargando datos de conexion socket_plani","E");
+		exit(0);
+	}
 
-		if (getaddrinfo(g_Ip_Planificador, g_Puerto_Planificador, &hints, &serverInfo) != 0) {// Carga en serverInfo los datos de la conexion
-			log_info(logger,
-					"ERROR: cargando datos de conexion socket_plani");
-		}
-
-		if ((*socket_plani = socket(serverInfo->ai_family, serverInfo->ai_socktype,
-				serverInfo->ai_protocol)) < 0) {
-			log_info(logger, "ERROR: crear socket_plani");
-		}
-		if (connect(*socket_plani, serverInfo->ai_addr, serverInfo->ai_addrlen)
-				< 0) {
-			log_info(logger, "ERROR: conectar socket_plani");
-		} else {
-			conexionOk = 1;
-		}
-		freeaddrinfo(serverInfo);	// No lo necesitamos mas
-		return conexionOk;
+	if ((*socket_plani = socket(serverInfo->ai_family, serverInfo->ai_socktype,
+			serverInfo->ai_protocol)) < 0) {
+		grabarLog(" - ERROR: crear socket_plani","E");
+		exit(0);
+	}
+	if (connect(*socket_plani, serverInfo->ai_addr, serverInfo->ai_addrlen)
+			< 0) {
+		grabarLog(" - ERROR: Conectar con Planificador","E");
+		exit(0);
+	} else {
+		conexionOk = 1;
+	}
+	freeaddrinfo(serverInfo);	// No lo necesitamos mas
+	return conexionOk;
 }
 
 int conectarMemoria(int *socket_memoria){
 	//Conecto a la memoria principal
 	//ESTRUCTURA DE SOCKETS; EN ESTE CASO CONECTA CON NODO
-		//log_info(logger, "Intentando conectar a nodo\n");
-		//conectar con Nodo
-		struct addrinfo hints;
-		struct addrinfo *serverInfo;
-		int conexionOk = 0;
 
-		memset(&hints, 0, sizeof(hints));
-		hints.ai_family = AF_UNSPEC;// Permite que la maquina se encargue de verificar si usamos IPv4 o IPv6
-		hints.ai_socktype = SOCK_STREAM;	// Indica que usaremos el protocolo TCP
+	//conectar con Nodo
+	struct addrinfo hints;
+	struct addrinfo *serverInfo;
+	int conexionOk = 0;
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;// Permite que la maquina se encargue de verificar si usamos IPv4 o IPv6
+	hints.ai_socktype = SOCK_STREAM;	// Indica que usaremos el protocolo TCP
 
 
-		if (getaddrinfo(g_Ip_Memoria, g_Puerto_Memoria, &hints, &serverInfo) != 0) {// Carga en serverInfo los datos de la conexion
-			log_info(logger,
-					"ERROR: cargando datos de conexion socket_memoria");
-		}
+	if (getaddrinfo(g_Ip_Memoria, g_Puerto_Memoria, &hints, &serverInfo) != 0) {// Carga en serverInfo los datos de la conexion
+		grabarLog(" - ERROR: cargando datos de conexion socket_memoria","E");
+		exit(0);
+	}
 
-		if ((*socket_memoria = socket(serverInfo->ai_family, serverInfo->ai_socktype,
-				serverInfo->ai_protocol)) < 0) {
-			log_info(logger, "ERROR: crear socket_memoria");
-		}
-		if (connect(*socket_memoria, serverInfo->ai_addr, serverInfo->ai_addrlen)
-				< 0) {
-			log_info(logger, "ERROR: conectar socket_memoria");
-		} else {
-			conexionOk = 1;
-		}
-		freeaddrinfo(serverInfo);	// No lo necesitamos mas
-		return conexionOk;
+	if ((*socket_memoria = socket(serverInfo->ai_family, serverInfo->ai_socktype,
+			serverInfo->ai_protocol)) < 0) {
+		grabarLog(" - ERROR: crear socket_memoria","E");
+		exit(0);
+	}
+	if (connect(*socket_memoria, serverInfo->ai_addr, serverInfo->ai_addrlen)
+			< 0) {
+		grabarLog(" - ERROR: Conectar con Memoria","E");
+		exit(0);
+	} else {
+		conexionOk = 1;
+	}
+	freeaddrinfo(serverInfo);	// No lo necesitamos mas
+	return conexionOk;
 }
 
 int PosicionDeBufferAInt(char* buffer, int posicion) {
@@ -639,10 +672,27 @@ int error =0;
 int fin =0;
 int ent_sal=0;
 int pasos = 0;
-
+char *logContextoEjecucion = string_new();
+char *logResultado;
+char* logFinalizacion;
 while ((getline(&line, &len, archivoMcod) != -1) && (linea!=instruccionAEjecutar)) {
 	linea++;
 }
+//Grabo en Log El contexto de ejecución recibido
+string_append(&logContextoEjecucion,"- DIRECCION DEL ARCHIVO: ");
+string_append(&logContextoEjecucion,direccion);
+string_append(&logContextoEjecucion," ||PROCESO ID : ");
+string_append(&logContextoEjecucion,string_itoa(pid));
+string_append(&logContextoEjecucion," ||EJECUTAR DESDE : ");
+string_append(&logContextoEjecucion,string_itoa(instruccionAEjecutar));
+if(quantum==0){
+	string_append(&logContextoEjecucion," ||ALGORITMO FIFO ");
+}else{
+	string_append(&logContextoEjecucion," ||ALGORITMO RR. Quantum: ");
+	string_append(&logContextoEjecucion,string_itoa(quantum));
+}
+grabarLog(logContextoEjecucion,"I");
+
 do{
 	pasos++;
 	t_global* la_global = buscarGlobalPorPuerto(puerto);
@@ -650,6 +700,7 @@ do{
 	//Busco en la lista por puerto, y le resto uno al semaforo para que se bloquee esperando la respuesta de memoria
 	sem_wait(&(la_global->sProxInstruccion));
 	la_global->instrucRealizadasGlobal++;
+
 	printf("\n (%d) ID:%d || Nro Inst: %d de %d. \n",la_global->puerto,la_global->pidGlobal,la_global->instrucRealizadasGlobal,quantum);
 	printf("\n RESULTADO PARCIAL: %s\n",la_global->resultado);
 
@@ -658,68 +709,101 @@ do{
 		la_global->finQuantum=1;
 		//para bloquear liberar el semaforo de la ultima instruccion cuando sale por quantum
 	}
-//Le saco el \n final a la linea ingresada
-char **sinBarraN = string_split(line, "\n");
-//Separo el comando y su campo ingresado en caso que tenga.
-char **sinBarraPunto = string_split(sinBarraN[0], ";");
-char **comando = string_split(sinBarraPunto[0], " ");
-char **comando2 = string_split(sinBarraN[0], "\"");
 
-//printf("\nIntruccion: %s\n",comando[0]);
-if (strcmp(comando[0], "iniciar") == 0) {
-	if(iniciar(CharAToInt(comando[1]),pid)==-1)
-		printf("Error, no se pudo iniciar");
+	//Le saco el \n final a la linea ingresada
+	char **sinBarraN = string_split(line, "\n");
+	//Separo el comando y su campo ingresado en caso que tenga.
+	char **sinBarraPunto = string_split(sinBarraN[0], ";");
+	char **comando = string_split(sinBarraPunto[0], " ");
+	char **comando2 = string_split(sinBarraN[0], "\"");
 
-	sleep(g_Retardo);
-}
+	logResultado= string_new();
+	string_append(&logResultado," - PROCESO ID : ");
+	string_append(&logResultado,string_itoa(pid));
+	string_append(&logResultado," - Instruccion Ejecutada: ");
 
-if (strcmp(comando[0], "leer") == 0) {
-	if(leer(CharAToInt(comando[1]),pid)==-1)
-		printf("Error, no se pudo leer");
+	//printf("\nIntruccion: %s\n",comando[0]);
+	if (strcmp(comando[0], "iniciar") == 0) {
+		if(iniciar(CharAToInt(comando[1]),pid)==-1)
+			printf("Error, no se pudo iniciar");
+		string_append(&logResultado,"INICIAR. CANT PAGINAS: ");
+		string_append(&logResultado,comando[1]);
+		sleep(g_Retardo);
+	}
 
-	sleep(g_Retardo);
-}
+	if (strcmp(comando[0], "leer") == 0) {
+		if(leer(CharAToInt(comando[1]),pid)==-1)
+			printf("Error, no se pudo leer");
+		string_append(&logResultado,"LEER. PAGINAS: ");
+		string_append(&logResultado,comando[1]);
+		sleep(g_Retardo);
+	}
 
-if (strcmp(comando[0], "escribir") == 0) {
-	if(escribir(CharAToInt(comando[1]),comando2[1],pid)==-1)
-		printf("Error, no se pudo leer");
+	if (strcmp(comando[0], "escribir") == 0) {
+		if(escribir(CharAToInt(comando[1]),comando2[1],pid)==-1)
+			printf("Error, no se pudo leer");
 
-	sleep(g_Retardo);
-}
-if (strcmp(comando[0], "entrada-salida") == 0) {
-	if(entradaSalida(CharAToInt(comando[1]),pid)==-1)
-		printf("Error, no se pudo leer");
-	ent_sal=1;
-	sem_post(&(la_global->sProxInstruccion)); //Entrada y salida no va a memoria entonces por eso lo libero aca.
-	sleep(g_Retardo);
-}
+		string_append(&logResultado,"ESCRIBIR. PAGINAS: ");
+		string_append(&logResultado,comando[1]);
+		string_append(&logResultado," CONTENIDO: ");
+		string_append(&logResultado,comando2[1]);
 
-if (strcmp(comando[0], "finalizar") == 0) {
-	//printf("\n\nFinalizar\n\n");
-	fin = 1;
-	if(finalizar(pid)==-1)
-		printf("Error, no se pudo leer");
+		sleep(g_Retardo);
+	}
+	if (strcmp(comando[0], "entrada-salida") == 0) {
+		if(entradaSalida(CharAToInt(comando[1]),pid)==-1)
+			printf("Error, no se pudo leer");
+		ent_sal=1;
+		string_append(&logResultado,"ENTRADA-SALIDA. CANT TIEMPO: ");
+		string_append(&logResultado,comando[1]);
+		sem_post(&(la_global->sProxInstruccion)); //Entrada y salida no va a memoria entonces por eso lo libero aca.
+		sleep(g_Retardo);
+	}
 
-	sleep(g_Retardo);
-}
+	if (strcmp(comando[0], "finalizar") == 0) {
+		fin = 1;
+		if(finalizar(pid)==-1)
+			printf("Error, no se pudo leer");
+		string_append(&logResultado,"FIN DEL PROCESO");
+		sleep(g_Retardo);
+	}
 
-error = (la_global->finError);
+	error = (la_global->finError);
+
+	//Grabo instruccion ejecutada en LOG:
+	if(error == 1){
+		string_append(&logResultado,"|| RESULTADO CON ERROR");
+		grabarLog(logResultado,"E");
+	}else
+	{
+		string_append(&logResultado,"|| RESULTADO CORRECTO");
+		grabarLog(logResultado,"I");
+	}
+
+
+
 
 }while((getline(&line, &len, archivoMcod) != -1) && (error==0)&& (fin==0) && (ent_sal==0) && (pasos!=quantum)); //Fin de archivo, Error,Finalizado, Entrada/Salida, Quantum
 
+//Si hubo un error en alguna lectura/escritura finalizo el proceso.
 if(error==1){
 	finalizarPlanificador();
-}
-//if(ent_sal==1){
-//	//enviar msj a memoria para avisar que termine la rafaga a memoria
-//	finRafaga(pid);
-//}
+	}
+
 if(pasos==quantum && fin!=1){
 	t_global* la_global = buscarGlobalPorPuerto(puerto);
 	sem_wait(&(la_global->sPlanificador)); //Semaforo para esperar que realice la ultima instruccion.
 	finQuantum(pid);
 
 	//Si es FIFO (Y no RR) entonces quantum vale 0, y la variable pasos al ingresar al DO ya vale 1, por lo tanto nunca va a ser igual (en el caso de FIFO)
+	}
+
+if(fin==1){
+	//Grabo el fin en el LOG aca, asi me queda en el orden correcto.
+	logFinalizacion = string_new();
+	string_append(&logFinalizacion,"- FIN DE PROCESO - PROCESO ID : ");
+	string_append(&logFinalizacion,string_itoa(pid));
+	grabarLog(logFinalizacion,"I");
 }
 
 fclose(archivoMcod);
@@ -727,18 +811,14 @@ fclose(archivoMcod);
 
 }
 
-int finRafaga(int pid){
-	printf("\n\n !!!!se utiliza la funcion finalizar momentaneamente!!! \n\n");
-	return finalizar(pid); //momentaneamnete usamos esta funcion. ojo, el PID no debe terminar en memoria.
-}
-
 int finQuantum(int pid){
 	int socket_Plani;
 	conectarPlanificador(&socket_Plani);
-	//13+puerto+pid+TiempoBloqueado+CantIntrucciones+Resultados
+	char* logFinalizacion = string_new();
 	char* buffer = string_new();
 	t_global* la_global = buscarGlobalPorPuerto(puerto);
 
+	//13+puerto+pid+TiempoBloqueado+CantIntrucciones+Resultados
 	string_append(&buffer,"14");
 	string_append(&buffer,obtenerSubBuffer(string_itoa(puerto)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
@@ -752,9 +832,14 @@ int finQuantum(int pid){
 	la_global->finQuantum =0;
 	la_global->estaEjecutando =0;
 	la_global->resultado=string_new();
-	//new->porcentajeEjec =0;
 	sem_init(&(la_global->sProxInstruccion),0,1);
 	sem_init(&(la_global->sPlanificador),0,0);
+
+	//Envio al LOG
+	string_append(&logFinalizacion,"- FIN DE RAFAGA - PROCESO ID : ");
+	string_append(&logFinalizacion,string_itoa(la_global->pidGlobal));
+	grabarLog(logFinalizacion,"I");
+
 	//AGREGAR RESULTADO PARCIAL
 	return EnviarDatos(socket_Plani, buffer,strlen(buffer));
 }
@@ -804,10 +889,10 @@ int escribir(int paginas,char* texto,int pid){
 int entradaSalida(int tiempo,int pid){
 	int socket_Plani;
 	conectarPlanificador(&socket_Plani);
-	//13+puerto+pid+TiempoBloqueado+CantIntrucciones+Resultados
 	char* buffer = string_new();
 	t_global* la_global = buscarGlobalPorPuerto(puerto);
 
+	//13+puerto+pid+TiempoBloqueado+CantIntrucciones+Resultados
 	string_append(&buffer,"13");
 	string_append(&buffer,obtenerSubBuffer(string_itoa(puerto)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
@@ -822,8 +907,9 @@ int entradaSalida(int tiempo,int pid){
 	la_global->finQuantum =0;
 	la_global->estaEjecutando=0;
 	la_global->resultado=string_new();
+	sem_init(&(la_global->sProxInstruccion),0,1);
+	sem_init(&(la_global->sPlanificador),0,0);
 
-	//AGREGAR RESULTADO PARCIAL
 	return EnviarDatos(socket_Plani, buffer,strlen(buffer));
 }
 
@@ -843,10 +929,10 @@ int finalizar(int pid){
 int finalizarPlanificador(){
 	int socket_Plani;
 	conectarPlanificador(&socket_Plani);
-	//12+puerto+pid+CantIntruccionesRealizadas+Resultados
 	t_global* la_global = buscarGlobalPorPuerto(puerto);
-
 	char* buffer = string_new();
+
+	//12+puerto+pid+CantIntruccionesRealizadas+Resultados
 	string_append(&buffer,"12");
 	string_append(&buffer,obtenerSubBuffer(string_itoa(puerto)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(la_global->pidGlobal)));
@@ -860,8 +946,11 @@ int finalizarPlanificador(){
 	la_global->resultado=string_new();
 	sem_init(&(la_global->sProxInstruccion),0,1);
 	sem_init(&(la_global->sPlanificador),0,0);
+
 	printf("(FIN) ENVIADO a PLANIFICADOR: %s\n",buffer);
+
 	return EnviarDatos(socket_Plani, buffer,strlen(buffer));
+
 }
 
 int devolverValorNumericoArchivo(char caracter,int numero){

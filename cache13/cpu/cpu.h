@@ -128,10 +128,10 @@ int finalizar(int pid);
 int finalizarPlanificador();
 t_global* buscarGlobalPorPuerto(int puerto);
 int leerPlanificador(char* buffer);
-int finRafaga(int pid);
 int escribirPlanificador(char* buffer);
 char* obtenerQuantum(char* buffer);
 int finQuantum(int pid);
 void calcularTiempoEjecucion (void* arg);
 void enviarPorcentaje();
+void grabarLog(char *mensaje, char *tLog);
 
