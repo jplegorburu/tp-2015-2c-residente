@@ -850,20 +850,32 @@ void informarEscribir(char* buffer){
 	//Conseguimos la entrada de la tabla de paginas:
 		entrada_tablaPags * entradaTablaPag = buscarPagina(proc, CharAToInt(num_pag));
 
+
 		printf("\nLA LISTA TIENE %d MARCOS\n",list_size(proc->framesAsignados));
-		if(list_size(proc->framesAsignados)<g_Max_Marcos_Proc){
+		if(list_size(proc->framesAsignados)<g_Max_Marcos_Proc && buscarFrameLibre()!=NULL){
 
 			printf("\nCargando Pagina a MP... \n");
 			t_frame * marcoLibre;
 			marcoLibre = buscarFrameLibre();
-					if(marcoLibre==NULL){
-						printf("No hay marco libre"); //TODO: ACA FINALIZAR EL PROCESO?
-					}
+
+//			printf("\n encontre frame %d\n", marcoLibre->frameNro);
+//
+//					if(marcoLibre->frameNro==-2){
+//						printf("No hay marco libre");
+//						//TODO:correr algo de reemplazo
+//
+//					}
 			//Sumo uno a los frames asignados al procesoS
+
+
 			list_add(proc->framesAsignados,marcoProceso_create(marcoLibre->frameNro));
+
+			printf("\n PASE AGREGAR LISTA\n");
 
 			//ASIGNAMOS ESE FRAME AL PROCESO.
 			grabarEnMemoria(marcoLibre->frameNro, contenido);
+
+			printf("\n PASE GRABAR MEMORIA\n");
 
 			marcoLibre->pid=CharAToInt(pid);
 			marcoLibre->pagina = CharAToInt(num_pag);
@@ -874,13 +886,16 @@ void informarEscribir(char* buffer){
 
 
 			t_marcoProceso* frameProc = buscarMarcoProceso(proc->framesAsignados,entradaTablaPag->frame);
+
+			printf("\n PASE BUSCAR MARCO PROCESO\n");
+
 			frameProc->modificado=1;
 			frameProc->uso=1;
 
 			printf("\nel proceso %d, pagina %d, CONTENIDO CARGADO %s \n", marcoLibre->pid,marcoLibre->pagina, contenido);
 
 		} else {
-			//Si los marcos asignados al proceso estan llenos correr algoritmo de remplazo
+			//Si los marcos asignados al proceso estan llenos o la memoria no tiene frames correr algoritmo de remplazo
 			correrAlgoritmo(proc,entradaTablaPag, contenido, 2);
 		}
 
@@ -1285,8 +1300,22 @@ t_frame * buscarFrameLibre(){
 	bool _true(void *elem) {
 				return (((t_frame*) elem)->usado == 0);
 			}
-		marcoLibre = list_find(marcos, _true);
-		return marcoLibre;
+
+	//printf("\n LALALAALALALALLALALLALAL\n");
+
+	//if(list_find(marcos, _true)!= NULL){
+	marcoLibre = list_find(marcos, _true);
+
+//	printf("\nFRAME %d, %d, %d, %d\n", marcoLibre->frameNro, marcoLibre->pagina, marcoLibre->pid, marcoLibre->usado);
+//	}
+//	else{
+//	marcoLibre->frameNro=-2;
+//	marcoLibre->pagina=-2;
+//	marcoLibre->pid=-2;
+//	marcoLibre->usado=-2;
+//	printf("\nFRAMETRUCHO %d, %d, %d, %d\n", marcoLibre->frameNro, marcoLibre->pagina, marcoLibre->pid, marcoLibre->usado);
+//	}
+	return marcoLibre;
 }
 
 void sacarMarcoProceso(t_list* listaFrames, int nroFrame){
