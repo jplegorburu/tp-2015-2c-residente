@@ -49,6 +49,7 @@ int g_Ejecutando = 1;						// - Bandera que controla la ejecución o no del prog
 t_list* lista_cpu; 							//Lista de Cpus conectadas.
 t_list* lista_procesos;
 t_list* marcos;
+t_list* TLB;
 #define BUFFERSIZE 200
 pthread_t hOrquestadorConexiones;
 int socket_swap;
@@ -167,8 +168,18 @@ void cpu_destroy(t_cpu* self) {
 
 
 typedef struct {
+	int pid;
+	int pagina;
+	int frame;
+} entrada_tlb;
 
-} t_tlb;
+entrada_tlb * entrada_tlb_create(){
+	entrada_tlb *new = malloc(sizeof(entrada_tlb));
+	new->pid = 0;
+	new->pagina = 0;
+	new->frame = -1;
+	return new;
+}
 
 
 sem_t sem_swap;
@@ -219,3 +230,5 @@ t_marcoProceso * buscarMarcoProceso(t_list* listaFrames, int nroFrame);
 void sacarMarcoProceso(t_list* listaFrames, int nroFrame);
 entrada_tablaPags * buscarPaginaPorMarco(entrada_tablaProcesos * proc, int marco);
 void mostrarTabaPaginas(int pid);
+void crearTLB(int g_Entradas_Tlb);
+entrada_tlb * buscarEnTLB(int id, int pagina);

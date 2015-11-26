@@ -8,7 +8,7 @@ int main(int argv, char** argc) {
 	lista_cpu=list_create();  //Creo la lista de las cpu.
 	lista_procesos=list_create(); //Lista de procesos en memoria
 	marcos = list_create();
-
+	TLB = list_create();
 	// Levantamos el archivo de configuracion.
 	LevantarConfig();
 
@@ -28,7 +28,7 @@ int main(int argv, char** argc) {
 
 
 	if(strcmp(g_Tlb_Habilitada,"SI")==0){
-	//	crearTLB(g_Entradas_Tlb);
+		crearTLB(g_Entradas_Tlb);
 	}
 
 	HiloOrquestadorDeConexiones();
@@ -744,8 +744,13 @@ void informarLeer(char* buffer){
 	la_cpu->procesoActivo=CharAToInt(pid);
 	//Le agrego el proceso activo correspondiente.
 
-	//TODO:PRIMERO BUSCA EN TLB
+	//PRIMERO BUSCA EN TLB
+	if(strcmp(g_Tlb_Habilitada,"SI")==0){
 
+		buscarEnTLB(CharAToInt(pid), CharAToInt(num_pag));
+
+	}
+else{
 	//SI NO ENCUENTRA AHI....
 	//Coseguimos la entrada de la tabla de procesos:
 	entrada_tablaProcesos * proc = buscarPorId(CharAToInt(pid));
@@ -775,6 +780,8 @@ void informarLeer(char* buffer){
 		sem_post(&sem_swap);
 	}
 
+
+}
 	mostrarTabaPaginas(CharAToInt(pid));
 
 }
@@ -1232,10 +1239,7 @@ t_cpu* buscarCPUporPuerto(char* puerto) {
 	return la_cpu;
 }
 
-//t_tlb* crearTLB(int cant_entradas){
-	//t_tlb TLB;
-//	return TLB;
-//}
+
 
 
 void inicializarListaMarcos(t_list * marcos, int cant_marcos){
@@ -1492,3 +1496,23 @@ void mostrarTabaPaginas(int pid){
 	//free(entrada);
 	//free(proc);
 }
+
+void crearTLB(int g_Entradas_Tlb){
+	int i;
+	for (i=0; i<g_Entradas_Tlb; i++){
+		list_add(TLB, entrada_tlb_create());
+		}
+}
+
+entrada_tlb * buscarEnTLB(int id, int pagina){ //TODO:REVISAR ESTO
+	bool _true(void *elem) {
+			return (((entrada_tlb*) elem)->pid == id);
+		}
+	bool _pagina(void *elem) {
+				return (((entrada_tlb*) elem)->pagina == pagina);
+		}
+	entrada_tlb * entrada;
+	t_list* entradas_delProceso=list_filter(TLB, _true);
+	entrada = list_find(entradas_delProceso, _pagina);
+	return entrada;
+	}
