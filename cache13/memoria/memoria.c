@@ -148,6 +148,13 @@ void LevantarConfig() {
 			Error("No se pudo leer el parametro TLB_HABILITADA");
 		}
 
+		// ALGORITMO TLB: FIFO
+		if (config_has_property(config, "ALGORITMO_TLB")) {
+			g_Algoritmo_TLB = config_get_string_value(config,"ALGORITMO_TLB");
+		} else{
+			Error("No se pudo leer el parametro ALGORITMO_TLB");
+		}
+
 		// Obtenemos el tiempo de retardo que tiene la memoria
 		if (config_has_property(config, "RETARDO_MEMORIA")) {
 			g_Retardo_Memoria = config_get_int_value(config, "RETARDO_MEMORIA");
@@ -155,7 +162,7 @@ void LevantarConfig() {
 			Error("No se pudo leer el parametro RETARDO_MEMORIA");
 		}
 
-		// Preguntamos y obtenemos si la TLB esta habilitada en la memoria
+		// Algoritmo de reemplazo (FIFO, LRU o CLOCK-M)
 		if (config_has_property(config, "ALGORITMO_REEMPLAZO")) {
 			g_Algoritmo_Reemplazo = config_get_string_value(config,"ALGORITMO_REEMPLAZO");
 		} else{
@@ -1219,16 +1226,16 @@ int conectarConCpu(int *socket_cpu, char*ip, char*puerto){
 
 		if (getaddrinfo(ip, puerto, &hints, &serverInfo) != 0) {// Carga en serverInfo los datos de la conexion
 			log_info(logger,
-					"ERROR: cargando datos de conexion socket_memoria");
+					"ERROR: cargando datos de conexion socket_cpu");
 		}
 
 		if ((*socket_cpu = socket(serverInfo->ai_family, serverInfo->ai_socktype,
 				serverInfo->ai_protocol)) < 0) {
-			log_info(logger, "ERROR: crear socket_memoria");
+			log_info(logger, "ERROR: crear socket_cpu");
 		}
 		if (connect(*socket_cpu, serverInfo->ai_addr, serverInfo->ai_addrlen)
 				< 0) {
-			log_info(logger, "ERROR: conectar socket_memoria");
+			log_info(logger, "ERROR: No se pudo conectar CPU");
 		} else {
 			conexionOk = 1;
 		}

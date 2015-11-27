@@ -38,7 +38,7 @@ char* g_Ip_Memoria;
 int g_Cant_Hilos;
 int g_Retardo;
 int g_Ejecutando = 1;						// - Bandera que controla la ejecución o no del programa. Si está en 0 el programa se cierra.
-int g_Puerto_CPU = 4500;
+int g_Puerto_CPU = 4800;
 static __thread int puerto;
 
 //Estructura para pasarle a AtiendeCliente para que reconzca el puerto.

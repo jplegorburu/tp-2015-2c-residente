@@ -44,6 +44,7 @@ int g_Tam_Marcos;
 int g_Entradas_Tlb;
 char* g_Tlb_Habilitada;
 char* g_Algoritmo_Reemplazo;
+char* g_Algoritmo_TLB;
 int g_Retardo_Memoria;
 int g_Ejecutando = 1;						// - Bandera que controla la ejecución o no del programa. Si está en 0 el programa se cierra.
 t_list* lista_cpu; 							//Lista de Cpus conectadas.

@@ -88,7 +88,7 @@ void conectarsePlanificador(int puertoCpu){
 		//ENVIO a PLANIFICADOR
 		//11210127.0.0.1143000 primer conexion, manda ip y puerto.
 		string_append(&buffer,"11");
-		aux=obtenerSubBuffer("127.0.0.1");
+		aux=obtenerSubBuffer(g_Ip_Planificador);//"127.0.0.1");
 		string_append(&buffer,aux);
 		aux=obtenerSubBuffer(string_itoa(puertoCpu));
 		string_append(&buffer,aux);
@@ -832,8 +832,8 @@ int finQuantum(int pid){
 	la_global->finQuantum =0;
 	la_global->estaEjecutando =0;
 	la_global->resultado=string_new();
-	sem_init(&(la_global->sProxInstruccion),0,1);
-	sem_init(&(la_global->sPlanificador),0,0);
+//	sem_init(&(la_global->sProxInstruccion),0,1);
+//	sem_init(&(la_global->sPlanificador),0,0);
 
 	//Envio al LOG
 	string_append(&logFinalizacion,"- FIN DE RAFAGA - PROCESO ID : ");
@@ -907,8 +907,8 @@ int entradaSalida(int tiempo,int pid){
 	la_global->finQuantum =0;
 	la_global->estaEjecutando=0;
 	la_global->resultado=string_new();
-	sem_init(&(la_global->sProxInstruccion),0,1);
-	sem_init(&(la_global->sPlanificador),0,0);
+	//sem_init(&(la_global->sProxInstruccion),0,1);
+	//sem_init(&(la_global->sPlanificador),0,0);
 
 	return EnviarDatos(socket_Plani, buffer,strlen(buffer));
 }
@@ -944,8 +944,8 @@ int finalizarPlanificador(){
 	la_global->finQuantum =0;
 	la_global->estaEjecutando =0;
 	la_global->resultado=string_new();
-	sem_init(&(la_global->sProxInstruccion),0,1);
-	sem_init(&(la_global->sPlanificador),0,0);
+	//sem_init(&(la_global->sProxInstruccion),0,1);
+	//sem_init(&(la_global->sPlanificador),0,0);
 
 	printf("(FIN) ENVIADO a PLANIFICADOR: %s\n",buffer);
 
