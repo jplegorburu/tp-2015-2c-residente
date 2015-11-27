@@ -182,3 +182,4 @@ int CharAToInt(char* x);
 void planificar();
 int atiendeEntrdaSalida(void * arguments);
 int completoPorcentaje(char* buffer);
+void eliminarCpu(char*ip,char*puerto);

@@ -15,7 +15,7 @@ int main(int argv, char** argc) {
 	cola_bloqueados = list_create();		//Cola de procesos bloquedados.
 	lista_ejecucion = list_create();  		//Lista de procesos en ejecucion
 	//Archivo de Log
-	logger = log_create(NOMBRE_ARCHIVO_LOG, "planificador", true,
+	logger = log_create(NOMBRE_ARCHIVO_LOG, "planificador", false,
 			LOG_LEVEL_TRACE);
 
 	// Instanciamos el archivo donde se grabará lo solicitado por consola
@@ -139,6 +139,9 @@ int correrPrograma(t_pcb* la_pcb) {
 		//Si encuentra una CPU libre inicia el proceso.
 
 		iniciarPrograma(la_pcb, la_cpu->ip, la_cpu->puerto); //Falta enviar contexto de ejecucion Path prox instruccion.
+		if(la_pcb->proxInst==1){
+			log_trace(logger,"INICIO PROCESO - PID: %d NOMBRE: %s", la_pcb->pid, la_pcb->ruta);
+		}
 		la_pcb->estado = 1;
 		sem_wait(&sEjecutando);
 		agregarAListaEjecucion(la_pcb->pid);
@@ -402,7 +405,7 @@ int AtiendeCpu(char* buffer) {
 	int id = list_size(lista_cpu) + 1;
 	la_cpu = cpu_create(id, la_Ip, el_Puerto, 0);
 	list_add(lista_cpu, la_cpu);
-
+	log_trace(logger,"CPU CONECTADA - IP: %s PUERTO: %s", la_Ip, el_Puerto);
 	return 1;
 }
 
@@ -491,8 +494,6 @@ int procesoBloqueado(char* buffer){
 	la_pcb->proxInst=la_pcb->proxInst+CharAToInt(instrucRealizadas);
 	sem_post(&sPcbs);
 
-	if(list_size(cola_listos)>0)
-			planificar();
     struct structEntradaSalida * argsEnvio = malloc(sizeof(struct structEntradaSalida));
     argsEnvio->pid = CharAToInt(pid);
     argsEnvio->tBloqueado = CharAToInt(tBloqueado);
@@ -539,7 +540,7 @@ void eliminarProceso(int pid){
 	eliminarDeListaEjecucion(pid);
 	sem_wait(&sPcbs);
 	t_pcb* la_pcb = buscarPCBporPid(pid);
-	printf("mProc %d FINALIZADO Tiempo de Espera:%.2f Tiempo de Ejecucion:%.2f Tiempo de Respuesta:%.2f",pid,la_pcb->tespera,la_pcb->tejecucion,la_pcb->trespuesta);
+	log_trace(logger,"mProc PID:%d NOMBRE:%s FINALIZADO Tiempo de Espera:%.2f Tiempo de Ejecucion:%.2f Tiempo de Respuesta:%.2f",pid,la_pcb->ruta,la_pcb->tespera,la_pcb->tejecucion,la_pcb->trespuesta);
 	eliminarPcb(pid);
 	sem_post(&sPcbs);
 }
@@ -556,22 +557,22 @@ void procesarInstrucciones(char* resultado, int pid,int cantInstrucciones) {
 		case 1:			//Resultado Iniciar
 			if (ObtenerComandoMSJ(instruccion + 1)) {
 				//Inicio satisfactorio
-				printf("mProc %d - Iniciado\n", pid);
+				log_trace(logger,"mProc %d - Iniciado\n", pid);
 			} else {
 				//Inicio Fallido
-				printf("mProc %d - Fallo\n", pid);
+				log_trace(logger,"mProc %d - Fallo\n", pid);
 				}
 			break;
 		case 2:			//Resultado Leer
 			if (ObtenerComandoMSJ(instruccion + 1)) {
 			numPagina = DigitosNombreArchivo(instruccion, &posActualAux);
 			contenido = DigitosNombreArchivo(instruccion, &posActualAux);
-			printf("mProc %d - Pagina %s leida: %s\n", pid, numPagina,
+			log_trace(logger,"mProc %d - Pagina %s leida: %s\n", pid, numPagina,
 					contenido);
 			posActualAux=1;
 			}else{
 				//Lectura Fallida
-				printf("mProc %d - Fallo al leer\n", pid);
+				log_trace(logger,"mProc %d - Fallo al leer\n", pid);
 			}
 
 			break;
@@ -579,7 +580,7 @@ void procesarInstrucciones(char* resultado, int pid,int cantInstrucciones) {
 			if (ObtenerComandoMSJ(instruccion + 1)) {
 			numPagina = DigitosNombreArchivo(instruccion, &posActualAux);
 			contenido = DigitosNombreArchivo(instruccion, &posActualAux);
-			printf("mProc %d - Pagina %s escrita: %s\n", pid, numPagina,
+			log_trace(logger,"mProc %d - Pagina %s escrita: %s\n", pid, numPagina,
 					contenido);
 			posActualAux=1;
 			}else{
@@ -589,11 +590,11 @@ void procesarInstrucciones(char* resultado, int pid,int cantInstrucciones) {
 			break;
 		case 4:			//Resultado E/S
 			tBloq =DigitosNombreArchivo(instruccion, &posActualAux);
-			printf("mProc %d en entrada-salida de tiempo %s\n",pid,tBloq);
+			log_trace(logger,"mProc %d en entrada-salida de tiempo %s\n",pid,tBloq);
 			posActualAux=1;
 			break;
 		case 5:			//Resultado Fin
-			printf("mProc %d finalizado\n",pid);
+			log_trace(logger,"mProc %d finalizado\n",pid);
 			break;
 
 		default:
@@ -903,6 +904,10 @@ int AtiendeCliente(void * arg) {
 						return 1;
 					}
 				}
+			} else{
+				eliminarCpu(ip,puerto);
+				correrPrograma(proceso);
+				log_trace(logger,"CPU DESCONECTADA - IP: %s PUERTO: %s", ip, puerto);
 			}
 			return 0;
 		}
@@ -1098,4 +1103,16 @@ int atiendeEntrdaSalida(void * arguments) {
 		la_pcb->estado=0;
 		correrPrograma(la_pcb);
 		return 1;
+}
+
+void eliminarCpu(char*ip,char*puerto){
+	t_cpu* la_cpu = malloc(sizeof(t_cpu));
+	bool _true(void *elem) {
+			return (!strcmp(((t_cpu*) elem)->puerto,puerto)&&!strcmp(((t_cpu*) elem)->ip,ip));
+		}
+	la_cpu = list_remove_by_condition(lista_cpu, _true);
+	if(la_cpu!=NULL){
+		cpu_destroy(la_cpu);
+	}
+
 }

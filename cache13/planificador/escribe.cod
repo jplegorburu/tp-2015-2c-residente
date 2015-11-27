@@ -1,0 +1,12 @@
+iniciar 20;
+escribir 1 "swap";
+escribir 2 "papa";
+escribir 3 "soy";
+leer 3;
+leer 1;
+leer 2;
+leer 2;
+escribir 1 "cambio";
+leer 2;
+leer 1;
+finalizar;

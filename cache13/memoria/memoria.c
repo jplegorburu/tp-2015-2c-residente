@@ -18,9 +18,10 @@ int main(int argv, char** argc) {
 	printf("\n LA LISTA TIENE %d MARCOS\n",list_size(marcos));
 
 	memoriaPrincipal = malloc(g_Cant_Marcos*g_Tam_Marcos); //Reservo la porcion de memoria donde se van a escribir y leer los marcos.
+	bzero(memoriaPrincipal,g_Cant_Marcos*g_Tam_Marcos*sizeof(char)); //Pone toda le memoria en /0
 
 	//Archivo de Log
-	logger = log_create(NOMBRE_ARCHIVO_LOG, "memoria", true, LOG_LEVEL_TRACE);
+	logger = log_create(NOMBRE_ARCHIVO_LOG, "memoria", false, LOG_LEVEL_TRACE);
 
 
 
@@ -30,6 +31,9 @@ int main(int argv, char** argc) {
 	if(strcmp(g_Tlb_Habilitada,"SI")==0){
 		crearTLB(g_Entradas_Tlb);
 	}
+
+	//Manejo de señales
+	SENIAL();
 
 	HiloOrquestadorDeConexiones();
 
@@ -1369,7 +1373,7 @@ char* leerEnMP(int nroMarco) {
  aux[i] = '\0';
 
  //memcpy(buffer, aux, g_Tam_Marcos); //Copia el aux en buffer
- printf("\nLA LECTURA FUE: %s\n",aux);
+ //printf("\nLA LECTURA FUE: %s\n",aux);
  return aux;
 }
 
@@ -1552,3 +1556,96 @@ entrada_tlb * buscarEnTLB(int id, int pagina){ //TODO:REVISAR ESTO
 	entrada = list_find(entradas_delProceso, _pagina);
 	return entrada;
 	}
+
+void * SENIAL(){
+	signal(SIGUSR1, AtenderSenial);
+	signal(SIGUSR2, AtenderSenial);
+	signal(SIGPOLL, AtenderSenial);
+	return NULL;
+}
+
+void AtenderSenial(int s){
+	switch(s){
+
+	case SIGUSR1:
+	{
+		//TLB FLUSH, hilo correctamente sincronizado
+		log_trace(logger,"SEÑAL RECIBIDA: SIGUSR1 - Corriendo TLB Flush");
+		pthread_t senial;
+		pthread_create(&senial, NULL, (void*)tlbFlush, NULL);
+		pthread_join(senial,NULL);
+	}
+	break;
+
+	case SIGUSR2:
+	{
+		//Limpiar completamente la memoria
+		//actualizando los bits que sean necesarios en las tablas de páginas
+		//de los diferentes procesos con un hilo correctamente sincronizado
+		log_trace(logger,"SEÑAL RECIBIDA: SIGUSR2 - Corriendo Limpieza Completa de la memoria");
+		pthread_t senial;
+		pthread_create(&senial, NULL, (void*)limpiarMemoria, NULL);
+		pthread_join(senial,NULL);
+	}
+	break;
+
+	case SIGPOLL:
+	{
+		//DUMP del contenido de la memoria principal indicando marco proceso y contenido.
+		log_trace(logger,"SEÑAL RECIBIDA: SIGPOLL - Corriendo Dump del contendio de la memoria");
+		pid_t pid = fork();
+
+		   if (pid == -1) {
+		      perror("fork failed");
+		      exit(EXIT_FAILURE);
+		   }
+		   else if (pid == 0) {
+		      int i;
+		      for (i=0; i<g_Cant_Marcos; i++){
+		    	char*contenido = malloc(g_Tam_Marcos);
+		    	contenido=leerEnMP(i);
+		    	log_trace(logger, "MARCO: %d CONTENIDO: %s", i,contenido);
+		      }
+		      _exit(EXIT_SUCCESS);
+		     }
+
+		   }
+	break;
+	}
+
+}
+
+void limpiarMemoria(void * arg) {
+	bzero(memoriaPrincipal,g_Cant_Marcos*g_Tam_Marcos*sizeof(char));
+	//Pone toda le memoria en /0
+	int i=0,j=0,k=0;
+
+	while(list_size(lista_procesos)<k){
+	//Limpio las paginas y los marcos de cada proceso.
+	entrada_tablaProcesos* unProceso = list_get(lista_procesos, k);
+
+	while(list_size(unProceso->tablaPags)<j){
+	entrada_tablaPags * entrada = list_get(unProceso->tablaPags,j);
+		//Elimino las referencias a las paginas cargadas en memoria
+		entrada->frame=-1;
+		entrada->presenteEnMemoria=0;
+		j++;
+		};
+	while(list_size(unProceso->framesAsignados)!=i){
+		//Elimino los frames asignados
+		t_marcoProceso * marcoProc = list_remove(unProceso->framesAsignados,i);
+		//Libero los marcos
+		t_frame* marcoDisponible = buscarFramePorNumero(marcoProc->frameNro);
+		marcoDisponible->usado=0;
+		marcoProceso_destroy(marcoProc);
+		i++;
+		};
+	k++;
+	}
+
+
+}
+
+void tlbFlush(void * arg) {
+
+}

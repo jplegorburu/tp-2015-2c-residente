@@ -79,8 +79,8 @@ typedef struct{
 t_frame *frame_create(int tam_marcos, int nroMarco) {
 	t_frame *new = malloc(sizeof(t_frame));
 	new->frameNro = nroMarco;
-	new->pid = 0;
-	new->pagina = 0;
+	new->pid = -1;
+	new->pagina = -1;
 	new->usado=0;
 	return new;
 }
@@ -233,3 +233,7 @@ entrada_tablaPags * buscarPaginaPorMarco(entrada_tablaProcesos * proc, int marco
 void mostrarTabaPaginas(int pid);
 void crearTLB(int g_Entradas_Tlb);
 entrada_tlb * buscarEnTLB(int id, int pagina);
+void AtenderSenial(int s);
+void * SENIAL();
+void limpiarMemoria(void * arg);
+void tlbFlush(void * arg);
