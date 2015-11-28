@@ -56,8 +56,8 @@ pthread_t hOrquestadorConexiones;
 int socket_swap;
 char* memoriaPrincipal;
 int punteroClock=0;      //puntero para el algoritmo clock modificado
-
-
+int TLBhits =0;
+int accesosTotal =0;
 // TIPOS //
 typedef enum {
 	CantidadArgumentosIncorrecta,
@@ -176,8 +176,8 @@ typedef struct {
 
 entrada_tlb * entrada_tlb_create(){
 	entrada_tlb *new = malloc(sizeof(entrada_tlb));
-	new->pid = 0;
-	new->pagina = 0;
+	new->pid = -1;
+	new->pagina = -1;
 	new->frame = -1;
 	return new;
 }
@@ -233,7 +233,9 @@ entrada_tablaPags * buscarPaginaPorMarco(entrada_tablaProcesos * proc, int marco
 void mostrarTabaPaginas(int pid);
 void crearTLB(int g_Entradas_Tlb);
 entrada_tlb * buscarEnTLB(int id, int pagina);
+entrada_tlb * sacarDeTLB();
 void AtenderSenial(int s);
 void * SENIAL();
 void limpiarMemoria(void * arg);
 void tlbFlush(void * arg);
+void calcularTlbHits (void* arg);

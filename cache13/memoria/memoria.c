@@ -35,6 +35,10 @@ int main(int argv, char** argc) {
 	//Manejo de señales
 	SENIAL();
 
+	pthread_t aciertosTLB;
+	pthread_create(&aciertosTLB, NULL, (void*)calcularTlbHits, NULL);
+
+
 	HiloOrquestadorDeConexiones();
 
 	//Hilo orquestador conexiones para escuchar
@@ -43,7 +47,7 @@ int main(int argv, char** argc) {
 			//exit(EXIT_FAILURE);
 		//};
 		//pthread_join(iThreadOrquestador, NULL );
-
+	pthread_join(aciertosTLB,NULL);
 	return EXIT_SUCCESS;
 
 
@@ -755,10 +759,35 @@ void informarLeer(char* buffer){
 	la_cpu->procesoActivo=CharAToInt(pid);
 	//Le agrego el proceso activo correspondiente.
 
+	accesosTotal++; //Para el calculo de la tasa de aciertos de la TLB
+
+	entrada_tlb * entradaTLB;
 	//PRIMERO BUSCA EN TLB
 	if(strcmp(g_Tlb_Habilitada,"SI")==0){
 
-		buscarEnTLB(CharAToInt(pid), CharAToInt(num_pag));
+		entradaTLB = buscarEnTLB(CharAToInt(pid), CharAToInt(num_pag));
+	}else{
+		//Si la TLB esta deshabilitada lo pongo en NULL para que vaya directo a memoria
+		entradaTLB=NULL;
+	}
+
+	if(entradaTLB!=NULL){
+		TLBhits++;
+		printf("TLB HIT!!!!\n");
+		char * content = malloc(g_Tam_Marcos);
+		content = leerEnMP(entradaTLB->frame);
+		//Coseguimos la entrada de la tabla de procesos:
+		entrada_tablaProcesos * proc = buscarPorId(CharAToInt(pid));
+
+		if((strcmp(g_Algoritmo_Reemplazo,"LRU"))==0){
+			sacarMarcoProceso(proc->framesAsignados,entradaTLB->frame);
+		}
+
+		t_marcoProceso* frameProc = buscarMarcoProceso(proc->framesAsignados,entradaTLB->frame);
+		frameProc->uso=1;
+		printf("\n LEYENDO DE MP CONTENIIDO %s\n", content);
+
+		leerCpu(la_cpu->ip,la_cpu->puerto, num_pag, content);
 
 	}
 else{
@@ -767,7 +796,7 @@ else{
 	entrada_tablaProcesos * proc = buscarPorId(CharAToInt(pid));
 	//Conseguimos la entrada de la tabla de paginas:
 	entrada_tablaPags * entradaTablaPag = buscarPagina(proc, CharAToInt(num_pag));
-
+	 sleep(g_Retardo_Memoria); //Retardo Busqueda de pagina TODO
 
 	if(entradaTablaPag->presenteEnMemoria==1){
 		char * content = malloc(g_Tam_Marcos);
@@ -781,6 +810,15 @@ else{
 		frameProc->uso=1;
 
 		printf("\n LEYENDO DE MP CONTENIIDO %s\n", content);
+
+		if(strcmp(g_Tlb_Habilitada,"SI")==0){
+			//Reemplazo en TLB
+				entradaTLB = sacarDeTLB();
+				entradaTLB->frame=entradaTablaPag->frame;
+				entradaTLB->pid=CharAToInt(pid);
+				entradaTLB->pagina=CharAToInt(num_pag);
+				list_add(TLB,entradaTLB);
+		}
 
 		leerCpu(la_cpu->ip,la_cpu->puerto, num_pag, content);
 	}
@@ -822,10 +860,54 @@ void informarEscribir(char* buffer){
 	la_cpu->procesoActivo=CharAToInt(pid);
 	//Le agreguo el proceso activo correspondiente.
 
+	accesosTotal++; //Para el calculo de la tasa de aciertos de la TLB
+
+	entrada_tlb * entradaTLB;
+	//PRIMERO BUSCA EN TLB
+	if(strcmp(g_Tlb_Habilitada,"SI")==0){
+
+		entradaTLB = buscarEnTLB(CharAToInt(pid), CharAToInt(num_pag));
+	}else{
+		//Si la TLB esta deshabilitada lo pongo en NULL para que vaya directo a memoria
+		entradaTLB=NULL;
+	}
+	if(entradaTLB!=NULL){
+			TLBhits++;
+			printf("TLB HIT!!!!\n");
+			//Coseguimos la entrada de la tabla de procesos:
+			entrada_tablaProcesos * proc = buscarPorId(CharAToInt(pid));
+			//Conseguimos la entrada de la tabla de paginas:
+			entrada_tablaPags * entradaTablaPag = buscarPagina(proc, CharAToInt(num_pag));
+
+
+			if((strcmp(g_Algoritmo_Reemplazo,"LRU"))==0){
+				sacarMarcoProceso(proc->framesAsignados,entradaTablaPag->frame);
+			}
+
+			grabarEnMemoria(entradaTLB->frame,contenido);
+			t_marcoProceso* frameProc = buscarMarcoProceso(proc->framesAsignados,entradaTLB->frame);
+			frameProc->modificado=1;
+			frameProc->uso=1;
+
+			//printf("\n GRABANDO EN MP CONTENIIDO %s\n", contenido);
+
+			char* resultado = string_new();
+			//string_append(&resultado,"1"); //TODO OJO QUE ESTA HARDCODEADO!!
+			string_append(&resultado,obtenerSubBuffer(num_pag));
+			string_append(&resultado,obtenerSubBuffer(contenido));
+
+			printf("\n ENVIANDO A CPU: %s\n", resultado);
+			escribirCpu(la_cpu->ip,la_cpu->puerto, resultado);
+
+		}
+	else{
+
+	//SI NO ENCUENTRA AHI....
 	//Coseguimos la entrada de la tabla de procesos:
 	entrada_tablaProcesos * proc = buscarPorId(CharAToInt(pid));
 	//Conseguimos la entrada de la tabla de paginas:
 	entrada_tablaPags * entradaTablaPag = buscarPagina(proc, CharAToInt(num_pag));
+	 sleep(g_Retardo_Memoria); //Retardo Busqueda de pagina TODO
 
 
 	if(entradaTablaPag->presenteEnMemoria==1){
@@ -846,8 +928,18 @@ void informarEscribir(char* buffer){
 	string_append(&resultado,obtenerSubBuffer(num_pag));
 	string_append(&resultado,obtenerSubBuffer(contenido));
 
+	if(strcmp(g_Tlb_Habilitada,"SI")==0){
+		//Reemplazo en TLB
+			entrada_tlb* entradaTLB = sacarDeTLB();
+			entradaTLB->frame=entradaTablaPag->frame;
+			entradaTLB->pid=CharAToInt(pid);
+			entradaTLB->pagina=CharAToInt(num_pag);
+			list_add(TLB,entradaTLB);
+	}
+
 	printf("\n ENVIANDO A CPU: %s\n", resultado);
 	escribirCpu(la_cpu->ip,la_cpu->puerto, resultado);
+
 	}else{
 	//Cuando escribo una pagina que no estaba cargada tengo que traerla de swap
 	// y solo escribo en Swap cuando la reemplazoy fue modificada
@@ -868,15 +960,6 @@ void informarEscribir(char* buffer){
 			printf("\nCargando Pagina a MP... \n");
 			t_frame * marcoLibre;
 			marcoLibre = buscarFrameLibre();
-
-//			printf("\n encontre frame %d\n", marcoLibre->frameNro);
-//
-//					if(marcoLibre->frameNro==-2){
-//						printf("No hay marco libre");
-//						//TODO:correr algo de reemplazo
-//
-//					}
-			//Sumo uno a los frames asignados al procesoS
 
 
 			list_add(proc->framesAsignados,marcoProceso_create(marcoLibre->frameNro));
@@ -903,6 +986,15 @@ void informarEscribir(char* buffer){
 			frameProc->modificado=1;
 			frameProc->uso=1;
 
+			if(strcmp(g_Tlb_Habilitada,"SI")==0){
+				//Reemplazo en TLB
+					entrada_tlb* entradaTLB = sacarDeTLB();
+					entradaTLB->frame=entradaTablaPag->frame;
+					entradaTLB->pid=CharAToInt(pid);
+					entradaTLB->pagina=CharAToInt(num_pag);
+					list_add(TLB,entradaTLB);
+			}
+
 			printf("\nel proceso %d, pagina %d, CONTENIDO CARGADO %s \n", marcoLibre->pid,marcoLibre->pagina, contenido);
 
 		} else {
@@ -920,6 +1012,7 @@ void informarEscribir(char* buffer){
 
 	}
 
+	}
 	mostrarTabaPaginas(CharAToInt(pid));
 }
 
@@ -1082,6 +1175,14 @@ void resultadoLecturaSwap(char* buffer){
 			marcoLibre->usado=1;
 			entradaTablaPag->presenteEnMemoria=1;
 
+			if(strcmp(g_Tlb_Habilitada,"SI")==0){
+				//Reemplazo en TLB
+					entrada_tlb* entradaTLB = sacarDeTLB();
+					entradaTLB->frame=marcoLibre->frameNro;
+					entradaTLB->pid=CharAToInt(pid);
+					entradaTLB->pagina=CharAToInt(pagina);
+					list_add(TLB,entradaTLB);
+			}
 			printf("\nel proceso %d, pagina %d, CONTENIDO CARGADO %s \n", marcoLibre->pid,marcoLibre->pagina, contenido);
 
 		} else {
@@ -1374,6 +1475,7 @@ char* leerEnMP(int nroMarco) {
 
  //memcpy(buffer, aux, g_Tam_Marcos); //Copia el aux en buffer
  //printf("\nLA LECTURA FUE: %s\n",aux);
+ sleep(g_Retardo_Memoria);
  return aux;
 }
 
@@ -1392,6 +1494,7 @@ int grabarEnMemoria(int nroMarco, char * texto) {
 	 i++;
 	 printf("%c",*(memoria-1));
  }
+ sleep(g_Retardo_Memoria);
  return 1;
 }
 
@@ -1421,6 +1524,15 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 		tPaginas->frame=el_marco->frameNro;
 		entrTP->presenteEnMemoria=0;
 		entrTP->frame=-1;
+
+		if(strcmp(g_Tlb_Habilitada,"SI")==0){
+			//Reemplazo en TLB
+				entrada_tlb* entradaTLB = sacarDeTLB();
+				entradaTLB->frame=el_marco->frameNro;
+				entradaTLB->pid=proceso->pid;
+				entradaTLB->pagina=tPaginas->pagN;
+				list_add(TLB,entradaTLB);
+		}
 
 	list_add(proceso->framesAsignados,el_marco);
 	//Vuelvo a agregarlo al final de la lista
@@ -1493,7 +1605,7 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 
 	if(el_marco->modificado==1){
 		//Si el marco fue modificado cargarlo devuelta a swap
-		escribirSwapReemplazo(proceso->pid,entrTP->pagN,leerEnMP(el_marco->frameNro)); //TODO Ver de hacer otra funcion que no retorne a CPU
+		escribirSwapReemplazo(proceso->pid,entrTP->pagN,leerEnMP(el_marco->frameNro));
 	}
 
 	grabarEnMemoria(el_marco->frameNro, contenido);
@@ -1512,6 +1624,15 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 	else if(operacion==2){ //es ESCRITURA
 	el_marco->uso=1;
 	el_marco->modificado=1;
+	}
+
+	if(strcmp(g_Tlb_Habilitada,"SI")==0){
+		//Reemplazo en TLB
+			entrada_tlb* entradaTLB = sacarDeTLB();
+			entradaTLB->frame=el_marco->frameNro;
+			entradaTLB->pid=proceso->pid;
+			entradaTLB->pagina=tPaginas->pagN;
+			list_add(TLB,entradaTLB);
 	}
 
 	}
@@ -1544,18 +1665,21 @@ void crearTLB(int g_Entradas_Tlb){
 		}
 }
 
-entrada_tlb * buscarEnTLB(int id, int pagina){ //TODO:REVISAR ESTO
+entrada_tlb * buscarEnTLB(int id, int pagina){
 	bool _true(void *elem) {
-			return (((entrada_tlb*) elem)->pid == id);
-		}
-	bool _pagina(void *elem) {
-				return (((entrada_tlb*) elem)->pagina == pagina);
+			return (((entrada_tlb*) elem)->pid == id && ((entrada_tlb*) elem)->pagina == pagina);
 		}
 	entrada_tlb * entrada;
-	t_list* entradas_delProceso=list_filter(TLB, _true);
-	entrada = list_find(entradas_delProceso, _pagina);
+	entrada = list_find(TLB, _true);
 	return entrada;
 	}
+
+entrada_tlb * sacarDeTLB(){
+	entrada_tlb * entrada;
+	entrada = list_remove(TLB, 0);
+	return entrada;
+	}
+
 
 void * SENIAL(){
 	signal(SIGUSR1, AtenderSenial);
@@ -1647,5 +1771,23 @@ void limpiarMemoria(void * arg) {
 }
 
 void tlbFlush(void * arg) {
+	int i=0;
+	while(list_size(TLB)!=i){
+		//Elimino los frames asignados
+		entrada_tlb * entradaTLB = list_get(TLB,i);
+		entradaTLB->frame=-1;
+		entradaTLB->pagina=-1;
+		entradaTLB->pid=-1;
+		i++;
+		};
+}
+
+void calcularTlbHits (void* arg){
+
+while(1){
+		sleep(60);
+		int tasaAciertos= (TLBhits*100)/accesosTotal;
+		printf("LA TASA DE ACIIERTOS DE LA TLB FUE: %d\n",tasaAciertos);
+}
 
 }
