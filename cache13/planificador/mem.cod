@@ -10,7 +10,7 @@ leer 2;
 escribir 4 "cuatro";
 leer 5;
 leer 3;
-escribir 2 "dos;
+escribir 2 "dos";
 leer 5;
 leer 2;
 entrada-salida 20;

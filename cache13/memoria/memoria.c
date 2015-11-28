@@ -456,24 +456,30 @@ void inicioProcesoSwap(int pid, int cant_pag){
 
 void leerSwap(int pid, int num_pag){
 
-
+		sem_wait(&sem_swap);
 		//33+pid+numero pagina
 		char* buffer = string_new();
 		string_append(&buffer,"33");
 		string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
 		string_append(&buffer,obtenerSubBuffer(string_itoa(num_pag)));
 		EnviarDatos(socket_swap, buffer,strlen(buffer));
+
+		//ACCESO A SWAP
+		entrada_tablaProcesos * proc = buscarPorId(pid);
+		proc->accesoSwap++;
+
 		//AtiendeCliente((void *)socket_swap);
 
 		int bytesRecibidos;
 		int cantRafaga = 1, tamanio = 0;
 		buffer = RecibirDatos(socket_swap, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
+		sem_post(&sem_swap);
 		mensajeDeSwap(buffer);
 }
 
 char* leerSwapEscribir(int pid, int num_pag){
 
-
+		sem_wait(&sem_swap);
 		//33+pid+numero pagina
 		char* buffer = string_new();
 		string_append(&buffer,"33");
@@ -482,10 +488,14 @@ char* leerSwapEscribir(int pid, int num_pag){
 		EnviarDatos(socket_swap, buffer,strlen(buffer));
 		//AtiendeCliente((void *)socket_swap);
 
+		//ACCESO A SWAP
+		entrada_tablaProcesos * proc = buscarPorId(pid);
+		proc->accesoSwap++;
+
 		int bytesRecibidos;
 		int cantRafaga = 1, tamanio = 0;
 		buffer = RecibirDatos(socket_swap, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
-
+		sem_post(&sem_swap);
 		char *contenido, *pid2, *pagina;
 		int posActual = 2;
 
@@ -502,6 +512,7 @@ char* leerSwapEscribir(int pid, int num_pag){
 
 void escribirSwap(int pid, int num_pag, char* contenido){
 
+	sem_wait(&sem_swap);
 
 		//34+pid+numero pagina
 		char* buffer = string_new();
@@ -511,15 +522,20 @@ void escribirSwap(int pid, int num_pag, char* contenido){
 		string_append(&buffer,obtenerSubBuffer(contenido));
 		EnviarDatos(socket_swap, buffer,strlen(buffer));
 
+		//ACCESO A SWAP
+		entrada_tablaProcesos * proc = buscarPorId(pid);
+		proc->accesoSwap++;
+
 		int bytesRecibidos;
 		int cantRafaga = 1, tamanio = 0;
 		buffer = RecibirDatos(socket_swap, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
+		sem_post(&sem_swap);
 		mensajeDeSwap(buffer);
 }
 
 void escribirSwapReemplazo(int pid, int num_pag, char* contenido){
 
-
+		sem_wait(&sem_swap);
 		//34+pid+numero pagina
 		char* buffer = string_new();
 		string_append(&buffer,"34");
@@ -528,9 +544,14 @@ void escribirSwapReemplazo(int pid, int num_pag, char* contenido){
 		string_append(&buffer,obtenerSubBuffer(contenido));
 		EnviarDatos(socket_swap, buffer,strlen(buffer));
 
+		//ACCESO A SWAP
+		entrada_tablaProcesos * proc = buscarPorId(pid);
+		proc->accesoSwap++;
+
 		int bytesRecibidos;
 		int cantRafaga = 1, tamanio = 0;
 		buffer = RecibirDatos(socket_swap, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
+		sem_post(&sem_swap);
 }
 
 void ConectarseConSwap(int g_Puerto_Memoria){
@@ -680,6 +701,7 @@ void informarFinDelProceso(char* buffer){
 		}
 	entrada_tablaProcesos* unProceso = list_remove_by_condition(lista_procesos, _true);
 	printf("\n PROCESO %d ELIMINADO CON %d PAGS\n", unProceso->pid,list_size(unProceso->tablaPags));
+	printf("\n ACCESO SWAP: %d FALLOS: %d\n", unProceso->accesoSwap,unProceso->falloPag);
 
 	while(list_size(unProceso->tablaPags)!=0){
 		entrada_tablaPags * entrada = list_remove(unProceso->tablaPags,0);
@@ -786,7 +808,6 @@ void informarLeer(char* buffer){
 		t_marcoProceso* frameProc = buscarMarcoProceso(proc->framesAsignados,entradaTLB->frame);
 		frameProc->uso=1;
 		printf("\n LEYENDO DE MP CONTENIIDO %s\n", content);
-
 		leerCpu(la_cpu->ip,la_cpu->puerto, num_pag, content);
 
 	}
@@ -819,14 +840,12 @@ else{
 				entradaTLB->pagina=CharAToInt(num_pag);
 				list_add(TLB,entradaTLB);
 		}
-
 		leerCpu(la_cpu->ip,la_cpu->puerto, num_pag, content);
 	}
 	else{
-		sem_wait(&sem_swap);
 		printf("LEYENDO DE SWAAAAP \n");
+		proc->falloPag++;
 		leerSwap(CharAToInt(pid), CharAToInt(num_pag));
-		sem_post(&sem_swap);
 	}
 
 
@@ -883,7 +902,6 @@ void informarEscribir(char* buffer){
 			if((strcmp(g_Algoritmo_Reemplazo,"LRU"))==0){
 				sacarMarcoProceso(proc->framesAsignados,entradaTablaPag->frame);
 			}
-
 			grabarEnMemoria(entradaTLB->frame,contenido);
 			t_marcoProceso* frameProc = buscarMarcoProceso(proc->framesAsignados,entradaTLB->frame);
 			frameProc->modificado=1;
@@ -908,7 +926,6 @@ void informarEscribir(char* buffer){
 	//Conseguimos la entrada de la tabla de paginas:
 	entrada_tablaPags * entradaTablaPag = buscarPagina(proc, CharAToInt(num_pag));
 	 sleep(g_Retardo_Memoria); //Retardo Busqueda de pagina TODO
-
 
 	if(entradaTablaPag->presenteEnMemoria==1){
 
@@ -941,18 +958,18 @@ void informarEscribir(char* buffer){
 	escribirCpu(la_cpu->ip,la_cpu->puerto, resultado);
 
 	}else{
+
 	//Cuando escribo una pagina que no estaba cargada tengo que traerla de swap
 	// y solo escribo en Swap cuando la reemplazoy fue modificada
-	sem_wait(&sem_swap);
 	char* contenido2 = leerSwapEscribir(CharAToInt(pid),CharAToInt(num_pag)); //esto no hace nada mas que contemplar el retardo swap
 	//escribirSwap(CharAToInt(pid),CharAToInt(num_pag),contenido);
-	sem_post(&sem_swap);
 
 	//CARGO PAGINA EN MP
 		entrada_tablaProcesos * proc = buscarPorId(CharAToInt(pid));
 	//Conseguimos la entrada de la tabla de paginas:
 		entrada_tablaPags * entradaTablaPag = buscarPagina(proc, CharAToInt(num_pag));
 
+		proc->falloPag++;
 
 		printf("\nLA LISTA TIENE %d MARCOS\n",list_size(proc->framesAsignados));
 		if(list_size(proc->framesAsignados)<g_Max_Marcos_Proc && buscarFrameLibre()!=NULL){

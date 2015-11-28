@@ -130,6 +130,8 @@ typedef struct{
 	int pid;
 	t_list * tablaPags;
 	t_list * framesAsignados;
+	int falloPag;
+	int accesoSwap;
 	//int framesAsignados;
 }entrada_tablaProcesos;
 
@@ -139,6 +141,8 @@ entrada_tablaProcesos *entradaTablaProcesos_create(int pid) {
 	new->tablaPags = list_create();
 	new->framesAsignados = list_create();
 	//new->framesAsignados = 0;
+	new->falloPag=0;
+	new->accesoSwap=0;
 	return new;
 }
 
