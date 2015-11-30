@@ -850,6 +850,17 @@ else{
 
 
 }
+//	//Imprimir estado AAAA
+//	entrada_tablaProcesos * proc = buscarPorId(CharAToInt(pid));
+//		t_marcoProceso* el_marco;
+//		int prueba, aux=0;
+//		prueba = list_size(proc->framesAsignados);
+//		while(prueba>aux){
+//			el_marco=list_get(proc->framesAsignados,aux);
+//			aux++;
+//			printf("Prueba: Marco: %d || Mod: %d || Uso: %d \n",el_marco->frameNro,el_marco->modificado,el_marco->uso);
+//		}
+//	///de prueba
 	mostrarTabaPaginas(CharAToInt(pid));
 
 }
@@ -1559,14 +1570,24 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 		t_marcoProceso* el_marco;
 		int primerCheck=0, segundoCheck=0, tercerCheck=0;
 		int punteroAux = punteroClock;
+
 		//Para saber cuando ya recorrí todos los marcos.
 
+		//veo como estan los punteros:
+//		int prueba, aux=0;
+//		prueba = list_size(proceso->framesAsignados);
+//		printf("Ptro esta en: %d\n",punteroClock);
+//	while(prueba>aux){
+//			el_marco=list_get(proceso->framesAsignados,aux);
+//			aux++;
+//			printf("Antes: Marco: %d || Mod: %d || Uso: %d \n",el_marco->frameNro,el_marco->modificado,el_marco->uso);
+//		}
 
 	//Primer chequeo buscando Uso=0 y Modificacion=0
 	while(primerCheck==0){
 		el_marco=list_get(proceso->framesAsignados,punteroClock);
 		punteroClock++;
-	//	printf("Marco: %d || Mod: %d || Uso: %d \n",el_marco->frameNro,el_marco->modificado,el_marco->uso);
+		//printf("1er: Marco: %d || Mod: %d || Uso: %d \n",el_marco->frameNro,el_marco->modificado,el_marco->uso);
 		if(punteroClock==list_size(proceso->framesAsignados)){
 		punteroClock=0;  //El puntero va de 0 a CantMarcos-1 , si es igual a list size hay que reiniciarlo a 0
 		}
@@ -1584,7 +1605,7 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 	while(primerCheck==2 && segundoCheck == 0){
 		el_marco=list_get(proceso->framesAsignados,punteroClock);
 		punteroClock++;
-
+		//printf("2do: Marco: %d || Mod: %d || Uso: %d \n",el_marco->frameNro,el_marco->modificado,el_marco->uso);
 		if(punteroClock==list_size(proceso->framesAsignados)){
 		punteroClock=0;  //El puntero va de 0 a CantMarcos-1 , si es igual a list size hay que reiniciarlo a 0
 		}
@@ -1605,7 +1626,7 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 	while(primerCheck==2 && segundoCheck == 2 && tercerCheck==0){
 		el_marco=list_get(proceso->framesAsignados,punteroClock);
 		punteroClock++;
-
+		//printf("3ro: Marco: %d || Mod: %d || Uso: %d \n",el_marco->frameNro,el_marco->modificado,el_marco->uso);
 		if(punteroClock==list_size(proceso->framesAsignados)){
 		punteroClock=0;  //El puntero va de 0 a CantMarcos-1 , si es igual a list size hay que reiniciarlo a 0
 		}
@@ -1618,6 +1639,11 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 			tercerCheck=2; //2 salio por haber recorrido todos
 		}
 	}
+	if(tercerCheck==2){
+		el_marco=list_get(proceso->framesAsignados,0);
+		punteroClock=1;
+	} //Si recorri todos los marcos agarro el 1ro y no el ultimo.
+
 	entrada_tablaPags * entrTP= buscarPaginaPorMarco(proceso, el_marco->frameNro);
 
 	if(el_marco->modificado==1){
@@ -1629,6 +1655,11 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 	t_frame * marcoModif;
 	marcoModif = buscarFramePorNumero(el_marco->frameNro);
 	marcoModif->pagina=tPaginas->pagN;
+	//El puntero queda en la proxima instruccion.
+	//punteroClock++;
+	//if(punteroClock==list_size(proceso->framesAsignados)){
+	//	punteroClock=0;
+	//}
 
 	tPaginas->presenteEnMemoria=1;
 	tPaginas->frame=el_marco->frameNro;
@@ -1637,11 +1668,19 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 
 	if(operacion==1){ //es LECTURA
 	el_marco->uso=1;
+	el_marco->modificado=0;
 	}
 	else if(operacion==2){ //es ESCRITURA
 	el_marco->uso=1;
 	el_marco->modificado=1;
 	}
+//	aux=0;
+//	printf("Ptro quedo en: %d\n",punteroClock);
+//	while(prueba>aux){
+//		el_marco=list_get(proceso->framesAsignados,aux);
+//		aux++;
+//		printf("DESPUES: Marco: %d || Mod: %d || Uso: %d \n",el_marco->frameNro,el_marco->modificado,el_marco->uso);
+//	}
 
 	if(strcmp(g_Tlb_Habilitada,"SI")==0){
 		//Reemplazo en TLB
