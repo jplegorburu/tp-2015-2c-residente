@@ -1657,9 +1657,9 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 	marcoModif->pagina=tPaginas->pagN;
 	//El puntero queda en la proxima instruccion.
 	//punteroClock++;
-	//if(punteroClock==list_size(proceso->framesAsignados)){
-	//	punteroClock=0;
-	//}
+	if(punteroClock==list_size(proceso->framesAsignados)){
+		punteroClock=0;
+	}
 
 	tPaginas->presenteEnMemoria=1;
 	tPaginas->frame=el_marco->frameNro;

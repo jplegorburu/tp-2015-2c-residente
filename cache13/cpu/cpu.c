@@ -701,7 +701,7 @@ do{
 	sem_wait(&(la_global->sProxInstruccion));
 	la_global->instrucRealizadasGlobal++;
 
-	printf("\n (%d) ID:%d || Nro Inst: %d de %d. \n",la_global->puerto,la_global->pidGlobal,la_global->instrucRealizadasGlobal,quantum);
+	printf("\n (%d) ID:%d. PID: %d|| Nro Inst: %d de %d. \n",la_global->puerto,la_global->pidGlobal,pid,la_global->instrucRealizadasGlobal,quantum);
 	printf("\n RESULTADO PARCIAL: %s\n",la_global->resultado);
 
 
@@ -719,12 +719,12 @@ do{
 
 	logResultado= string_new();
 	string_append(&logResultado," - PROCESO ID : ");
-	string_append(&logResultado,string_itoa(pid));
+	string_append(&logResultado,string_itoa(la_global->pidGlobal));
 	string_append(&logResultado," - Instruccion Ejecutada: ");
 
 	//printf("\nIntruccion: %s\n",comando[0]);
 	if (strcmp(comando[0], "iniciar") == 0) {
-		if(iniciar(CharAToInt(comando[1]),pid)==-1)
+		if(iniciar(CharAToInt(comando[1]),la_global->pidGlobal)==-1)
 			printf("Error, no se pudo iniciar");
 		string_append(&logResultado,"INICIAR. CANT PAGINAS: ");
 		string_append(&logResultado,comando[1]);
@@ -732,7 +732,7 @@ do{
 	}
 
 	if (strcmp(comando[0], "leer") == 0) {
-		if(leer(CharAToInt(comando[1]),pid)==-1)
+		if(leer(CharAToInt(comando[1]),la_global->pidGlobal)==-1)
 			printf("Error, no se pudo leer");
 		string_append(&logResultado,"LEER. PAGINAS: ");
 		string_append(&logResultado,comando[1]);
@@ -740,7 +740,7 @@ do{
 	}
 
 	if (strcmp(comando[0], "escribir") == 0) {
-		if(escribir(CharAToInt(comando[1]),comando2[1],pid)==-1)
+		if(escribir(CharAToInt(comando[1]),comando2[1],la_global->pidGlobal)==-1)
 			printf("Error, no se pudo leer");
 
 		string_append(&logResultado,"ESCRIBIR. PAGINAS: ");
@@ -751,7 +751,7 @@ do{
 		sleep(g_Retardo);
 	}
 	if (strcmp(comando[0], "entrada-salida") == 0) {
-		if(entradaSalida(CharAToInt(comando[1]),pid)==-1)
+		if(entradaSalida(CharAToInt(comando[1]),la_global->pidGlobal)==-1)
 			printf("Error, no se pudo leer");
 		ent_sal=1;
 		string_append(&logResultado,"ENTRADA-SALIDA. CANT TIEMPO: ");
@@ -762,7 +762,7 @@ do{
 
 	if (strcmp(comando[0], "finalizar") == 0) {
 		fin = 1;
-		if(finalizar(pid)==-1)
+		if(finalizar(la_global->pidGlobal)==-1)
 			printf("Error, no se pudo leer");
 		string_append(&logResultado,"FIN DEL PROCESO");
 		sleep(g_Retardo);
@@ -793,7 +793,7 @@ if(error==1){
 if(pasos==quantum && fin!=1){
 	t_global* la_global = buscarGlobalPorPuerto(puerto);
 	sem_wait(&(la_global->sPlanificador)); //Semaforo para esperar que realice la ultima instruccion.
-	finQuantum(pid);
+	finQuantum();
 
 	//Si es FIFO (Y no RR) entonces quantum vale 0, y la variable pasos al ingresar al DO ya vale 1, por lo tanto nunca va a ser igual (en el caso de FIFO)
 	}
@@ -801,8 +801,9 @@ if(pasos==quantum && fin!=1){
 if(fin==1){
 	//Grabo el fin en el LOG aca, asi me queda en el orden correcto.
 	logFinalizacion = string_new();
+	t_global* la_global = buscarGlobalPorPuerto(puerto);
 	string_append(&logFinalizacion,"- FIN DE PROCESO - PROCESO ID : ");
-	string_append(&logFinalizacion,string_itoa(pid));
+	string_append(&logFinalizacion,string_itoa(la_global->pidGlobal));
 	grabarLog(logFinalizacion,"I");
 }
 
@@ -811,7 +812,7 @@ fclose(archivoMcod);
 
 }
 
-int finQuantum(int pid){
+int finQuantum(){
 	int socket_Plani;
 	conectarPlanificador(&socket_Plani);
 	char* logFinalizacion = string_new();
@@ -820,8 +821,8 @@ int finQuantum(int pid){
 
 	//13+puerto+pid+TiempoBloqueado+CantIntrucciones+Resultados
 	string_append(&buffer,"14");
-	string_append(&buffer,obtenerSubBuffer(string_itoa(puerto)));
-	string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
+	string_append(&buffer,obtenerSubBuffer(string_itoa(la_global->puerto)));
+	string_append(&buffer,obtenerSubBuffer(string_itoa(la_global->pidGlobal)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(la_global->instrucRealizadasGlobal)));
 	string_append(&buffer,obtenerSubBuffer(la_global->resultado));
 	printf("(Quantum) ENVIADO a PLANIFICADOR: %s\n",buffer);
@@ -917,6 +918,7 @@ int finalizar(int pid){
 	//ACA ENVIO A MEMORIA
 	int socket_Memoria;
 	conectarMemoria(&socket_Memoria);
+
 	//12+puerto+pid
 	char* buffer = string_new();
 	string_append(&buffer,"12");
