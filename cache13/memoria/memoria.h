@@ -243,3 +243,5 @@ void * SENIAL();
 void limpiarMemoria(void * arg);
 void tlbFlush(void * arg);
 void calcularTlbHits (void* arg);
+void mostrarTLB();
+void eliminoEnTLB(int id, int pagina);

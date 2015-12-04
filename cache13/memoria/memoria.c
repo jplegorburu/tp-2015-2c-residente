@@ -702,6 +702,7 @@ void informarFinDelProceso(char* buffer){
 	entrada_tablaProcesos* unProceso = list_remove_by_condition(lista_procesos, _true);
 	printf("\n PROCESO %d ELIMINADO CON %d PAGS\n", unProceso->pid,list_size(unProceso->tablaPags));
 	printf("\n ACCESO SWAP: %d FALLOS: %d\n", unProceso->accesoSwap,unProceso->falloPag);
+	printf("\n HITS:%d\n",TLBhits);
 
 
 
@@ -797,6 +798,7 @@ void informarLeer(char* buffer){
 
 	if(entradaTLB!=NULL){
 		TLBhits++;
+		//mostrarTLB()
 		printf("TLB HIT!!!!\n");
 		char * content = malloc(g_Tam_Marcos);
 		content = leerEnMP(entradaTLB->frame);
@@ -841,6 +843,8 @@ else{
 				entradaTLB->pid=CharAToInt(pid);
 				entradaTLB->pagina=CharAToInt(num_pag);
 				list_add(TLB,entradaTLB);
+				printf("Tamaño TLB:%d\n",list_size(TLB));
+				//mostrarTLB()
 		}
 		leerCpu(la_cpu->ip,la_cpu->puerto, num_pag, content);
 	}
@@ -910,6 +914,7 @@ void informarEscribir(char* buffer){
 	}
 	if(entradaTLB!=NULL){
 			TLBhits++;
+			//mostrarTLB()
 			printf("TLB HIT!!!!\n");
 			//Coseguimos la entrada de la tabla de procesos:
 			entrada_tablaProcesos * proc = buscarPorId(CharAToInt(pid));
@@ -970,6 +975,8 @@ void informarEscribir(char* buffer){
 			entradaTLB->pid=CharAToInt(pid);
 			entradaTLB->pagina=CharAToInt(num_pag);
 			list_add(TLB,entradaTLB);
+			printf("Tamaño TLB:%d\n",list_size(TLB));
+			//mostrarTLB()
 	}
 
 	printf("\n ENVIANDO A CPU: %s\n", resultado);
@@ -1028,6 +1035,7 @@ void informarEscribir(char* buffer){
 					entradaTLB->pid=CharAToInt(pid);
 					entradaTLB->pagina=CharAToInt(num_pag);
 					list_add(TLB,entradaTLB);
+					//mostrarTLB()
 			}
 
 			printf("\nel proceso %d, pagina %d, CONTENIDO CARGADO %s \n", marcoLibre->pid,marcoLibre->pagina, contenido);
@@ -1217,6 +1225,8 @@ void resultadoLecturaSwap(char* buffer){
 					entradaTLB->pid=CharAToInt(pid);
 					entradaTLB->pagina=CharAToInt(pagina);
 					list_add(TLB,entradaTLB);
+					printf("Tamaño TLB:%d\n",list_size(TLB));
+					//mostrarTLB()
 			}
 			printf("\nel proceso %d, pagina %d, CONTENIDO CARGADO %s \n", marcoLibre->pid,marcoLibre->pagina, contenido);
 
@@ -1550,6 +1560,21 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 		char * lecMP= leerEnMP(el_marco->frameNro);
 		escribirSwapReemplazo(proceso->pid,entrTP->pagN,lecMP);//TODO: Que escribirSwapReemplazo devuelva 1 para que salga t0do bien
 	}
+		//
+		if(strcmp(g_Tlb_Habilitada,"SI")==0){
+		//Reemplazo en TLBxxx
+			entrada_tlb* entradaTLB = buscarEnTLB(proceso->pid, entrTP->pagN);
+			if(entradaTLB!=NULL){
+				eliminoEnTLB(proceso->pid, entrTP->pagN);
+				entrada_tlb* entradaTLB = malloc(sizeof(entrada_tlb));
+				entradaTLB->frame=el_marco->frameNro;
+				entradaTLB->pid=proceso->pid;
+				entradaTLB->pagina=tPaginas->pagN;
+				list_add(TLB,entradaTLB);
+				printf("Tamaño TLB:%d\n",list_size(TLB));
+				//mostrarTLB()
+			}
+		}
 	 	grabarEnMemoria(el_marco->frameNro, contenido);
 	 	t_frame * marcoModif;
 		marcoModif = buscarFramePorNumero(el_marco->frameNro);
@@ -1560,14 +1585,14 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 		entrTP->presenteEnMemoria=0;
 		entrTP->frame=-1;
 
-		if(strcmp(g_Tlb_Habilitada,"SI")==0){
-			//Reemplazo en TLB
-				entrada_tlb* entradaTLB = sacarDeTLB();
-				entradaTLB->frame=el_marco->frameNro;
-				entradaTLB->pid=proceso->pid;
-				entradaTLB->pagina=tPaginas->pagN;
-				list_add(TLB,entradaTLB);
-		}
+//		if(strcmp(g_Tlb_Habilitada,"SI")==0){
+//			//Reemplazo en TLB
+//				entrada_tlb* entradaTLB = sacarDeTLB();
+//				entradaTLB->frame=el_marco->frameNro;
+//				entradaTLB->pid=proceso->pid;
+//				entradaTLB->pagina=tPaginas->pagN;
+//				list_add(TLB,entradaTLB);
+//		}
 
 	list_add(proceso->framesAsignados,el_marco);
 	//Vuelvo a agregarlo al final de la lista
@@ -1658,6 +1683,22 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 		escribirSwapReemplazo(proceso->pid,entrTP->pagN,leerEnMP(el_marco->frameNro));
 	}
 
+	if(strcmp(g_Tlb_Habilitada,"SI")==0){
+	//Reemplazo en TLBxxx
+
+		entrada_tlb* entradaTLB = buscarEnTLB(proceso->pid, entrTP->pagN);
+		if(entradaTLB!=NULL){
+			eliminoEnTLB(proceso->pid, entrTP->pagN);
+			entrada_tlb* entradaTLB = malloc(sizeof(entrada_tlb));
+			entradaTLB->frame=el_marco->frameNro;
+			entradaTLB->pid=proceso->pid;
+			entradaTLB->pagina=tPaginas->pagN;
+			list_add(TLB,entradaTLB);
+			printf("Tamaño TLB:%d\n",list_size(TLB));
+			//mostrarTLB()
+		}
+	}
+
 	grabarEnMemoria(el_marco->frameNro, contenido);
 	t_frame * marcoModif;
 	marcoModif = buscarFramePorNumero(el_marco->frameNro);
@@ -1689,14 +1730,16 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 //		printf("DESPUES: Marco: %d || Mod: %d || Uso: %d \n",el_marco->frameNro,el_marco->modificado,el_marco->uso);
 //	}
 
-	if(strcmp(g_Tlb_Habilitada,"SI")==0){
-		//Reemplazo en TLB
-			entrada_tlb* entradaTLB = sacarDeTLB();
-			entradaTLB->frame=el_marco->frameNro;
-			entradaTLB->pid=proceso->pid;
-			entradaTLB->pagina=tPaginas->pagN;
-			list_add(TLB,entradaTLB);
-	}
+//	if(strcmp(g_Tlb_Habilitada,"SI")==0){
+//		//Reemplazo en TLB
+//			entrada_tlb* entradaTLB = sacarDeTLB();
+//			entradaTLB->frame=el_marco->frameNro;
+//			entradaTLB->pid=proceso->pid;
+//			entradaTLB->pagina=tPaginas->pagN;
+//			list_add(TLB,entradaTLB);
+//			printf("Tamaño TLB:%d\n",list_size(TLB));
+//	}
+
 
 	}
 }
@@ -1721,6 +1764,25 @@ void mostrarTabaPaginas(int pid){
 	//free(proc);
 }
 
+void mostrarTLB(){
+
+	printf("------------------------------------------------------\nTLB.....: \n");
+
+	int index=0;
+	entrada_tlb *entrada = malloc(sizeof(entrada_tlb));
+
+	entrada = list_get(TLB, index);
+	while(entrada!=NULL){
+		printf("Frame: %d  //   Pagina: %d    //   PID: %d\n",
+				entrada->frame,entrada->pagina,entrada->pid);
+		index++;
+		entrada = list_get(TLB, index);
+	}
+
+	//free(entrada);
+	//free(proc);
+}
+
 void crearTLB(int g_Entradas_Tlb){
 	int i;
 	for (i=0; i<g_Entradas_Tlb; i++){
@@ -1736,6 +1798,14 @@ entrada_tlb * buscarEnTLB(int id, int pagina){
 	entrada = list_find(TLB, _true);
 	return entrada;
 	}
+
+void eliminoEnTLB(int id, int pagina){
+	bool _true(void *elem) {
+			return (((entrada_tlb*) elem)->pid == id && ((entrada_tlb*) elem)->pagina == pagina);
+		}
+	list_remove_by_condition(TLB, _true);
+	}
+
 
 entrada_tlb * sacarDeTLB(){
 	entrada_tlb * entrada;
