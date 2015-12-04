@@ -703,6 +703,8 @@ void informarFinDelProceso(char* buffer){
 	printf("\n PROCESO %d ELIMINADO CON %d PAGS\n", unProceso->pid,list_size(unProceso->tablaPags));
 	printf("\n ACCESO SWAP: %d FALLOS: %d\n", unProceso->accesoSwap,unProceso->falloPag);
 
+
+
 	while(list_size(unProceso->tablaPags)!=0){
 		entrada_tablaPags * entrada = list_remove(unProceso->tablaPags,0);
 		entradaTablaPags_destroy(entrada);
@@ -897,6 +899,11 @@ void informarEscribir(char* buffer){
 	if(strcmp(g_Tlb_Habilitada,"SI")==0){
 
 		entradaTLB = buscarEnTLB(CharAToInt(pid), CharAToInt(num_pag));
+
+//		if(entradaTLB!=NULL && entradaTLB->frame!=-1){
+//		printf("\nACA ESTA\n");
+//		}
+
 	}else{
 		//Si la TLB esta deshabilitada lo pongo en NULL para que vaya directo a memoria
 		entradaTLB=NULL;
@@ -1842,8 +1849,13 @@ void calcularTlbHits (void* arg){
 
 while(1){
 		sleep(60);
+		if(accesosTotal==0){
+		printf("LA TASA HISTORICA DE ACIERTOS DE LA TLB FUE: 0 (No hubo accesos a memoria aun)\n");
+		}
+		else{
 		int tasaAciertos= (TLBhits*100)/accesosTotal;
-		printf("LA TASA DE ACIIERTOS DE LA TLB FUE: %d\n",tasaAciertos);
+		printf("LA TASA HISTORICA DE ACIERTOS DE LA TLB FUE: %d \n",tasaAciertos);
+		}
 }
 
 }
