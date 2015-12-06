@@ -5,6 +5,7 @@ int main(int argv, char** argc) {
 
 	//int iThreadOrquestador;
 	sem_init(&sem_swap,0,1); //semaforo para conectarse con swap
+	sem_init(&sem_Operacion,0,1); //semaforo para conectarse con swap
 	lista_cpu=list_create();  //Creo la lista de las cpu.
 	lista_procesos=list_create(); //Lista de procesos en memoria
 	marcos = list_create();
@@ -15,7 +16,7 @@ int main(int argv, char** argc) {
 
 	// Creamos los frames
 	inicializarListaMarcos(marcos, g_Cant_Marcos);
-	printf("\n LA LISTA TIENE %d MARCOS\n",list_size(marcos));
+	printf("\n 1LA LISTA TIENE %d MARCOS\n",list_size(marcos));
 
 	memoriaPrincipal = malloc(g_Cant_Marcos*g_Tam_Marcos); //Reservo la porcion de memoria donde se van a escribir y leer los marcos.
 	bzero(memoriaPrincipal,g_Cant_Marcos*g_Tam_Marcos*sizeof(char)); //Pone toda le memoria en /0
@@ -29,6 +30,7 @@ int main(int argv, char** argc) {
 
 
 	if(strcmp(g_Tlb_Habilitada,"SI")==0){
+		printf("Creo TLB\n");
 		crearTLB(g_Entradas_Tlb);
 	}
 
@@ -726,6 +728,45 @@ void informarFinDelProceso(char* buffer){
 
 }
 
+void AbortarProceso(char* el_Puerto, char* pid){
+
+	//Agrego el proceso a la cpu correspondiente
+	t_cpu* la_cpu =buscarCPUporPuerto(el_Puerto);
+	//Busco la CPU por el puerto
+	la_cpu->procesoActivo=CharAToInt(pid);
+	//Le agreguo el proceso activo correspondiente.
+	//AGREGO PROCESO A TABLAS DE LA MEMORIA
+
+	bool _true(void *elem) {
+			return (((entrada_tablaProcesos*) elem)->pid == CharAToInt(pid));
+		}
+	entrada_tablaProcesos* unProceso = list_remove_by_condition(lista_procesos, _true);
+	printf("\n PROCESO %d ELIMINADO CON %d PAGS\n", unProceso->pid,list_size(unProceso->tablaPags));
+	printf("\n ACCESO SWAP: %d FALLOS: %d\n", unProceso->accesoSwap,unProceso->falloPag);
+	printf("\n HITS:%d\n",TLBhits);
+
+
+
+	while(list_size(unProceso->tablaPags)!=0){
+		entrada_tablaPags * entrada = list_remove(unProceso->tablaPags,0);
+		entradaTablaPags_destroy(entrada);
+		};
+	while(list_size(unProceso->framesAsignados)!=0){
+		t_marcoProceso * marcoProc = list_remove(unProceso->framesAsignados,0);
+		//Libero los marcos
+		t_frame* marcoDisponible = buscarFramePorNumero(marcoProc->frameNro);
+		marcoDisponible->usado=0;
+		marcoProceso_destroy(marcoProc);
+		};
+	entradaTablaProcesos_destroy(unProceso);
+
+	sem_wait(&sem_swap);
+	finProcesoSwap(CharAToInt(pid));
+	sem_post(&sem_swap);
+
+
+}
+
 void informarInicio(char* buffer){
 	char *el_Puerto, *pid, *cant_pag;
 	int posActual = 2;
@@ -764,6 +805,8 @@ void informarInicio(char* buffer){
 }
 
 void informarLeer(char* buffer){
+	sem_wait(&sem_Operacion);
+
 	char *el_Puerto, *pid, *num_pag;
 	int posActual = 2;
 
@@ -789,7 +832,9 @@ void informarLeer(char* buffer){
 	entrada_tlb * entradaTLB;
 	//PRIMERO BUSCA EN TLB
 	if(strcmp(g_Tlb_Habilitada,"SI")==0){
-
+		////printf("Buscar:ID:%d, PAG:%d\n",CharAToInt(pid), CharAToInt(num_pag));
+	//	printf("Antes TLB:     \n");
+	//	mostrarTLB();
 		entradaTLB = buscarEnTLB(CharAToInt(pid), CharAToInt(num_pag));
 	}else{
 		//Si la TLB esta deshabilitada lo pongo en NULL para que vaya directo a memoria
@@ -801,7 +846,9 @@ void informarLeer(char* buffer){
 		//mostrarTLB()
 		printf("TLB HIT!!!!\n");
 		char * content = malloc(g_Tam_Marcos);
+
 		content = leerEnMP(entradaTLB->frame);
+
 		//Coseguimos la entrada de la tabla de procesos:
 		entrada_tablaProcesos * proc = buscarPorId(CharAToInt(pid));
 
@@ -809,11 +856,12 @@ void informarLeer(char* buffer){
 			sacarMarcoProceso(proc->framesAsignados,entradaTLB->frame);
 		}
 
+		//printf("Frame: %d, ID: %d,Nro Pag:%d\n",entradaTLB->frame,CharAToInt(pid),CharAToInt(num_pag));
+		//mostrarTLB();
 		t_marcoProceso* frameProc = buscarMarcoProceso(proc->framesAsignados,entradaTLB->frame);
 		frameProc->uso=1;
 		printf("\n LEYENDO DE MP CONTENIIDO %s\n", content);
 		leerCpu(la_cpu->ip,la_cpu->puerto, num_pag, content);
-
 	}
 else{
 	//SI NO ENCUENTRA AHI....
@@ -838,13 +886,15 @@ else{
 
 		if(strcmp(g_Tlb_Habilitada,"SI")==0){
 			//Reemplazo en TLB
+
 				entradaTLB = sacarDeTLB();
 				entradaTLB->frame=entradaTablaPag->frame;
 				entradaTLB->pid=CharAToInt(pid);
 				entradaTLB->pagina=CharAToInt(num_pag);
 				list_add(TLB,entradaTLB);
-				printf("Tamaño TLB:%d\n",list_size(TLB));
+				//printf("Tamaño TLB:%d\n",list_size(TLB));
 				//mostrarTLB()
+
 		}
 		leerCpu(la_cpu->ip,la_cpu->puerto, num_pag, content);
 	}
@@ -868,11 +918,12 @@ else{
 //		}
 //	///de prueba
 	mostrarTabaPaginas(CharAToInt(pid));
-
+	sem_post(&sem_Operacion);
 }
 
 
 void informarEscribir(char* buffer){
+	sem_wait(&sem_Operacion);
 	char *el_Puerto, *pid, *num_pag, *contenido;
 	int posActual = 2;
 
@@ -970,12 +1021,13 @@ void informarEscribir(char* buffer){
 
 	if(strcmp(g_Tlb_Habilitada,"SI")==0){
 		//Reemplazo en TLB
+
 			entrada_tlb* entradaTLB = sacarDeTLB();
 			entradaTLB->frame=entradaTablaPag->frame;
 			entradaTLB->pid=CharAToInt(pid);
 			entradaTLB->pagina=CharAToInt(num_pag);
 			list_add(TLB,entradaTLB);
-			printf("Tamaño TLB:%d\n",list_size(TLB));
+
 			//mostrarTLB()
 	}
 
@@ -1030,19 +1082,25 @@ void informarEscribir(char* buffer){
 
 			if(strcmp(g_Tlb_Habilitada,"SI")==0){
 				//Reemplazo en TLB
+
 					entrada_tlb* entradaTLB = sacarDeTLB();
 					entradaTLB->frame=entradaTablaPag->frame;
 					entradaTLB->pid=CharAToInt(pid);
 					entradaTLB->pagina=CharAToInt(num_pag);
 					list_add(TLB,entradaTLB);
+
 					//mostrarTLB()
 			}
 
 			printf("\nel proceso %d, pagina %d, CONTENIDO CARGADO %s \n", marcoLibre->pid,marcoLibre->pagina, contenido);
 
-		} else {
+		} else if (list_size(proc->framesAsignados)!=0) {
 			//Si los marcos asignados al proceso estan llenos o la memoria no tiene frames correr algoritmo de remplazo
 			correrAlgoritmo(proc,entradaTablaPag, contenido, 2);
+		} else {
+			printf(COLOR_CYAN"******ABORTAR PROCESO POR FALTA DE MARCOS******"DEFAULT"\n");
+			sleep(10);
+			AbortarProceso(el_Puerto, pid);
 		}
 
 	//Busco la CPU en la lista donde se esta ejecutando el proceso.
@@ -1057,6 +1115,7 @@ void informarEscribir(char* buffer){
 
 	}
 	mostrarTabaPaginas(CharAToInt(pid));
+	sem_post(&sem_Operacion);
 }
 
 
@@ -1195,7 +1254,7 @@ void resultadoLecturaSwap(char* buffer){
 	//Conseguimos la entrada de la tabla de paginas:
 		entrada_tablaPags * entradaTablaPag = buscarPagina(proc, CharAToInt(pagina));
 
-		if(list_size(proc->framesAsignados)<g_Max_Marcos_Proc){
+		if(list_size(proc->framesAsignados)<g_Max_Marcos_Proc && buscarFrameLibre()!=NULL){
 
 			printf("\nCargando Pagina a MP... \n");
 			t_frame * marcoLibre;
@@ -1220,19 +1279,25 @@ void resultadoLecturaSwap(char* buffer){
 
 			if(strcmp(g_Tlb_Habilitada,"SI")==0){
 				//Reemplazo en TLB
+
 					entrada_tlb* entradaTLB = sacarDeTLB();
 					entradaTLB->frame=marcoLibre->frameNro;
 					entradaTLB->pid=CharAToInt(pid);
 					entradaTLB->pagina=CharAToInt(pagina);
 					list_add(TLB,entradaTLB);
-					printf("Tamaño TLB:%d\n",list_size(TLB));
+
 					//mostrarTLB()
 			}
 			printf("\nel proceso %d, pagina %d, CONTENIDO CARGADO %s \n", marcoLibre->pid,marcoLibre->pagina, contenido);
 
+		} else if (list_size(proc->framesAsignados)!=0) {
+			//Si los marcos asignados al proceso estan llenos o la memoria no tiene frames correr algoritmo de remplazo
+			correrAlgoritmo(proc,entradaTablaPag, contenido, 2);
 		} else {
-			//Si los marcos asignados al proceso estan llenos correr algoritmo de remplazo
-			correrAlgoritmo(proc,entradaTablaPag, contenido, 1);
+			printf(COLOR_MAGENTA"ABORTAR PROCESO"DEFAULT"\n");
+			sleep(10);
+			t_cpu* la_cpu = buscarCPUporPid(CharAToInt(pid));
+			AbortarProceso(la_cpu->puerto, pid);
 		}
 
 	//Busco la CPU en la lista donde se esta ejecutando el proceso.
@@ -1565,15 +1630,17 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 		//Reemplazo en TLBxxx
 			entrada_tlb* entradaTLB = buscarEnTLB(proceso->pid, entrTP->pagN);
 			if(entradaTLB!=NULL){
+
 				eliminoEnTLB(proceso->pid, entrTP->pagN);
 				entrada_tlb* entradaTLB = malloc(sizeof(entrada_tlb));
 				entradaTLB->frame=el_marco->frameNro;
 				entradaTLB->pid=proceso->pid;
 				entradaTLB->pagina=tPaginas->pagN;
 				list_add(TLB,entradaTLB);
-				printf("Tamaño TLB:%d\n",list_size(TLB));
+
 				//mostrarTLB()
 			}
+
 		}
 	 	grabarEnMemoria(el_marco->frameNro, contenido);
 	 	t_frame * marcoModif;
@@ -1694,9 +1761,10 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 			entradaTLB->pid=proceso->pid;
 			entradaTLB->pagina=tPaginas->pagN;
 			list_add(TLB,entradaTLB);
-			printf("Tamaño TLB:%d\n",list_size(TLB));
+		//	printf("Tamaño TLB:%d\n",list_size(TLB));
 			//mostrarTLB()
 		}
+
 	}
 
 	grabarEnMemoria(el_marco->frameNro, contenido);

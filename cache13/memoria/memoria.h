@@ -23,6 +23,9 @@
 
 
 #define COLOR_VERDE   			"\x1b[32m"
+#define COLOR_ROJO   			"\x1b[41m"
+#define COLOR_MAGENTA  			"\x1b[35m"
+#define COLOR_CYAN     			"\x1b[36m"
 #define DEFAULT   				"\x1b[0m"
 #define PATH_CONFIG 			"config.cfg"		//Ruta del config
 #define NOMBRE_ARCHIVO_LOG 		"memoria.log"			//Nombre de archivo de log		//Cantidad maxima de directorios
@@ -188,6 +191,7 @@ entrada_tlb * entrada_tlb_create(){
 
 
 sem_t sem_swap;
+sem_t sem_Operacion;
 int leerCpuError(char*ip, char*puerto);
 int conectarConSwap(int *socket_swap);
 void ConectarseConSwap(int g_puerto_memoria);
@@ -245,3 +249,4 @@ void tlbFlush(void * arg);
 void calcularTlbHits (void* arg);
 void mostrarTLB();
 void eliminoEnTLB(int id, int pagina);
+void AbortarProceso(char* el_Puerto, char* pid);
