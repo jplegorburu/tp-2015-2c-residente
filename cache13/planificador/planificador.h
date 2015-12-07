@@ -25,6 +25,8 @@
 #define COLOR_VERDE   			"\x1b[32m"
 #define COLOR_AMARILLO			"\x1b[33m"
 #define COLOR_ROJO				"\x1b[31m"
+#define COLOR_MAGENTA  			"\x1b[35m"
+#define COLOR_CYAN     			"\x1b[36m"
 #define DEFAULT   				"\x1b[0m"
 #define PATH_CONFIG 			"config.cfg"		//Ruta del config
 #define NOMBRE_ARCHIVO_CONSOLA  "Consola_planificador.txt"	//Nombre de archivo de consola
@@ -60,7 +62,7 @@ sem_t sCpus;                           //Semaforo de lista de cpu
 sem_t sPcbs;                           //Semaforo de lista de pcb
 sem_t sListos;                           //Semaforo de lista de Listos
 sem_t sEjecutando;                           //Semaforo de lista de procesos en Ejecucion
-
+sem_t sCorrer;
 // TIPOS //
 typedef enum {
 	CantidadArgumentosIncorrecta,

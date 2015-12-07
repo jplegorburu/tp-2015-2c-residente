@@ -648,6 +648,7 @@ int AtiendeCliente(void * arg) {
 								sem_post(&(la_global->sPlanificador));
 							}
 
+								printf("(%d)Libero semaforo sProxInstruccion - Recibi Datos\n",puerto);
 								sem_post(&(la_global->sProxInstruccion));
 
 							//Una vez que recibo la respuesta de memoria activo el semaforo para que siga con la siguiente intruccion.
@@ -717,10 +718,10 @@ do{
 	t_global* la_global = buscarGlobalPorPuerto(puerto);
 	la_global->estaEjecutando=1;
 	//Busco en la lista por puerto, y le resto uno al semaforo para que se bloquee esperando la respuesta de memoria
-	printf("Antes: Ejecutada:%c || Recibida:%c \n",la_global->instrucEjecutada,la_global->instrucRecibida);
+	printf("(%d)Antes: Ejecutada:%c || Recibida:%c \n",puerto,la_global->instrucEjecutada,la_global->instrucRecibida);
 	sem_wait(&(la_global->sProxInstruccion));
-	printf("Ejecutada:%c || Recibida:%c \n",la_global->instrucEjecutada,la_global->instrucRecibida);
-if(la_global->instrucEjecutada==la_global->instrucRecibida){
+	printf("(%d)Ejecutada:%c || Recibida:%c \n",puerto,la_global->instrucEjecutada,la_global->instrucRecibida);
+if(!(la_global->instrucEjecutada!='F' && la_global->instrucRecibida=='F')){
 	la_global->instrucRealizadasGlobal++;
 
 	printf("\n (%d) ID:%d. PID: %d|| Nro Inst: %d de %d. \n",la_global->puerto,la_global->pidGlobal,pid,la_global->instrucRealizadasGlobal,quantum);
@@ -782,6 +783,7 @@ if(la_global->instrucEjecutada==la_global->instrucRecibida){
 		la_global->instrucRecibida='S';
 		string_append(&logResultado,"ENTRADA-SALIDA. CANT TIEMPO: ");
 		string_append(&logResultado,comando[1]);
+		printf("(%d)Libero semaforo sProxInstruccion - E/S\n",puerto);
 		sem_post(&(la_global->sProxInstruccion)); //Entrada y salida no va a memoria entonces por eso lo libero aca.
 		sleep(g_Retardo);
 	}
@@ -808,12 +810,15 @@ if(la_global->instrucEjecutada==la_global->instrucRecibida){
 	{
 		string_append(&logResultado,"|| RESULTADO CORRECTO");
 		grabarLog(logResultado,"I");
+		free(logResultado);
 	}
 
 }else{
 	fin=1;
 	string_append(&logResultado,"||**ABORTAMOS PROCESO**||");
 	grabarLog(logResultado,"W");
+	free(logResultado);
+	printf("(%d)Libero semaforo sProxInstruccion - Abortamos\n",puerto);
 	sem_post(&(la_global->sProxInstruccion));
 }
 
@@ -840,6 +845,7 @@ if(fin==1){
 	string_append(&logFinalizacion,"- FIN DE PROCESO - PROCESO ID : ");
 	string_append(&logFinalizacion,string_itoa(la_global->pidGlobal));
 	grabarLog(logFinalizacion,"I");
+	free(logFinalizacion);
 }
 
 fclose(archivoMcod);
@@ -847,40 +853,6 @@ fclose(archivoMcod);
 
 }
 
-int finQuantum(){
-	int socket_Plani;
-	conectarPlanificador(&socket_Plani);
-	char* logFinalizacion = string_new();
-	char* buffer = string_new();
-	t_global* la_global = buscarGlobalPorPuerto(puerto);
-
-	//13+puerto+pid+TiempoBloqueado+CantIntrucciones+Resultados
-	string_append(&buffer,"14");
-	string_append(&buffer,obtenerSubBuffer(string_itoa(la_global->puerto)));
-	string_append(&buffer,obtenerSubBuffer(string_itoa(la_global->pidGlobal)));
-	string_append(&buffer,obtenerSubBuffer(string_itoa(la_global->instrucRealizadasGlobal)));
-	string_append(&buffer,obtenerSubBuffer(la_global->resultado));
-	printf("(Quantum) ENVIADO a PLANIFICADOR: %s\n",buffer);
-
-	//Reinicio las variables del hilo:
-	la_global->instrucRealizadasGlobal=0;
-	la_global->finError =0;
-	la_global->finQuantum =0;
-	la_global->estaEjecutando =0;
-	la_global->resultado=string_new();
-//	la_global->instrucEjecutada ='X';
-//	la_global->instrucRecibida='X';
-//	sem_init(&(la_global->sProxInstruccion),0,1);
-//	sem_init(&(la_global->sPlanificador),0,0);
-
-	//Envio al LOG
-	string_append(&logFinalizacion,"- FIN DE RAFAGA - PROCESO ID : ");
-	string_append(&logFinalizacion,string_itoa(la_global->pidGlobal));
-	grabarLog(logFinalizacion,"I");
-
-	//AGREGAR RESULTADO PARCIAL
-	return EnviarDatos(socket_Plani, buffer,strlen(buffer));
-}
 
 int iniciar(int paginas, int pid){
 
@@ -987,13 +959,53 @@ int finalizarPlanificador(){
 	la_global->resultado=string_new();
 //	la_global->instrucEjecutada ='X';
 //	la_global->instrucRecibida='X';
-	//sem_init(&(la_global->sProxInstruccion),0,1);
-	//sem_init(&(la_global->sPlanificador),0,0);
+
 
 	printf("(FIN) ENVIADO a PLANIFICADOR: %s\n",buffer);
 
-	return EnviarDatos(socket_Plani, buffer,strlen(buffer));
+	EnviarDatos(socket_Plani, buffer,strlen(buffer));
+	//sem_init(&(la_global->sProxInstruccion),0,1);
+	//sem_init(&(la_global->sPlanificador),0,0);
+	return 1;
 
+}
+
+int finQuantum(){
+	int socket_Plani;
+	conectarPlanificador(&socket_Plani);
+	char* logFinalizacion = string_new();
+	char* buffer = string_new();
+	t_global* la_global = buscarGlobalPorPuerto(puerto);
+
+	//13+puerto+pid+TiempoBloqueado+CantIntrucciones+Resultados
+	string_append(&buffer,"14");
+	string_append(&buffer,obtenerSubBuffer(string_itoa(la_global->puerto)));
+	string_append(&buffer,obtenerSubBuffer(string_itoa(la_global->pidGlobal)));
+	string_append(&buffer,obtenerSubBuffer(string_itoa(la_global->instrucRealizadasGlobal)));
+	string_append(&buffer,obtenerSubBuffer(la_global->resultado));
+	printf("(Quantum) ENVIADO a PLANIFICADOR: %s\n",buffer);
+
+	//Reinicio las variables del hilo:
+	la_global->instrucRealizadasGlobal=0;
+	la_global->finError =0;
+	la_global->finQuantum =0;
+	la_global->estaEjecutando =0;
+	la_global->resultado=string_new();
+//	la_global->instrucEjecutada ='X';
+//	la_global->instrucRecibida='X';
+	//sem_init(&(la_global->sProxInstruccion),0,1);
+	//sem_init(&(la_global->sPlanificador),0,0);
+
+	//Envio al LOG
+	string_append(&logFinalizacion,"- FIN DE RAFAGA - PROCESO ID : ");
+	string_append(&logFinalizacion,string_itoa(la_global->pidGlobal));
+	grabarLog(logFinalizacion,"I");
+
+	//AGREGAR RESULTADO PARCIAL
+	EnviarDatos(socket_Plani, buffer,strlen(buffer));
+	//sem_init(&(la_global->sProxInstruccion),0,1);
+	//sem_init(&(la_global->sPlanificador),0,0);
+	return 1;
 }
 
 int devolverValorNumericoArchivo(char caracter,int numero){

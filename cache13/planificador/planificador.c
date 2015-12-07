@@ -8,6 +8,8 @@ int main(int argv, char** argc) {
 	sem_init(&sPcbs,0,1);
 	sem_init(&sListos,0,1);
 	sem_init(&sEjecutando,0,1);
+	sem_init(&sCorrer,0,1);
+
 
 	lista_cpu = list_create();		//Lista de cpus
 	lista_procesos = list_create();		//Lista de procesos.
@@ -123,7 +125,7 @@ int operaciones_consola() {
 }
 
 int correrPrograma(t_pcb* la_pcb) {
-
+sem_wait(&sCorrer);
 	//Busco si hay allguna CPU libre
 	sem_wait(&sCpus);
 	t_cpu* la_cpu = buscarCpuLibre();
@@ -134,7 +136,7 @@ int correrPrograma(t_pcb* la_pcb) {
 		sem_wait(&sListos);
 		agregarAColaListos(la_pcb->pid);
 		sem_post(&sListos);
-		return 1;
+
 	} else {
 		//Si encuentra una CPU libre inicia el proceso.
 
@@ -146,10 +148,12 @@ int correrPrograma(t_pcb* la_pcb) {
 		sem_wait(&sEjecutando);
 		agregarAListaEjecucion(la_pcb->pid);
 		sem_post(&sEjecutando);
-		return 1;
+
 	}
 	//PLANIFICAR buscarCpuLibre y algoritmo de ejecucion.
-
+sleep(1); //Para que si copio y pego, y tengo varios hilos, me envie bien los procesos al cpu.
+sem_post(&sCorrer);
+return 1;
 }
 
 void agregarAListaEjecucion(int pid) {
@@ -541,6 +545,7 @@ void eliminarProceso(int pid){
 	sem_wait(&sPcbs);
 	t_pcb* la_pcb = buscarPCBporPid(pid);
 	log_trace(logger,"mProc PID:%d NOMBRE:%s FINALIZADO Tiempo de Espera:%.2f Tiempo de Ejecucion:%.2f Tiempo de Respuesta:%.2f",pid,la_pcb->ruta,la_pcb->tespera,la_pcb->tejecucion,la_pcb->trespuesta);
+	printf(COLOR_MAGENTA"FINALIZADO: mProc PID:%d||"COLOR_CYAN"NOMBRE:%s||"COLOR_MAGENTA" Tiempo de Espera:%.2f||Tiempo de Ejecucion:%.2f||Tiempo de Respuesta:%.2f"DEFAULT"\n",pid,la_pcb->ruta,la_pcb->tespera,la_pcb->tejecucion,la_pcb->trespuesta);
 	eliminarPcb(pid);
 	sem_post(&sPcbs);
 }

@@ -4,6 +4,8 @@ int main(int argv, char** argc) {
 
 	//Archivo de Log
 	logger = log_create(NOMBRE_ARCHIVO_LOG, "planificador", true, LOG_LEVEL_TRACE);
+	sem_init(&sOperacion,0,1); //semaforo para manejar las operaciones
+	sem_init(&sAgregarProceso,0,1); //semaforo para que no haya problemas al compactar.
 
 	//Creamos las listas de espacio en Swap ocupado y libre
 	listaOcupado = list_create();
@@ -269,6 +271,7 @@ int quitarProceso(int pid){
 
 //DEVUELVE 1 SI EL PROCESO SE PUDO INICIAR Y 0 SI SE RECHAZO POR FALTA DE ESPACIO EN SWAP
 int agregarProceso(int pid, int paginas){
+	//sem_wait(&sAgregarProceso);
 	int paginaDeInicio = hayLugarLibreSinCompactar(paginas);
 
 	if(paginaDeInicio != -1){
@@ -291,7 +294,7 @@ int agregarProceso(int pid, int paginas){
 	}
 	//INDICA QUE EL PROCESO SE INICIO
 	log_info(logger, "PROCESO AGREGADO. PID: %d, Nro byte inicial: %d, Cantidad de bytes asignados: %d",pid,paginaDeInicio*g_Tam_Pags, paginas*g_Tam_Pags);
-
+	//sem_post(&sAgregarProceso);
 	return 1;
 }
 
@@ -563,31 +566,37 @@ void escucharConexiones(){
 						case 1:
 							//CONEXION CON SWAP
 							mensaje = informarConexionConMemoria(buffer);
+							sem_post(&sOperacion);
 							break;
 
 						case 2:
 							//INICIO DE PROCESO
 							mensaje = informarAgregarProceso(buffer);
+							sem_post(&sOperacion);
 							break;
 
 						case 3:
 							//PEDIDO DE PAGINA
 							mensaje = informarLecturaPagina(buffer);
+							sem_post(&sOperacion);
 							break;
 
 						case 4:
 							//ESCRIBIR PAGINA
 							mensaje = informarEscrituraPagina(buffer);
+							sem_post(&sOperacion);
 							break;
 
 						case 5:
 							//FINALIZAR PROCESO
 							mensaje = informarQuitarProceso(buffer);
+							sem_post(&sOperacion);
 							break;
 						}
 					}
 					// Enviamos datos al cliente.
 					longitudBuffer=strlen(mensaje);
+					sem_wait(&sOperacion);
 					EnviarDatos(socket_client, mensaje,longitudBuffer);
 				} else{
 					desconexionCliente = 1;
