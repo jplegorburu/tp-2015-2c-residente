@@ -55,9 +55,13 @@ int finQuantum;
 int estaEjecutando;
 int porcentajeEjec;
 int instrucRealizadasGlobal;
+int fin;
+char instrucEjecutada;
+char instrucRecibida;
 char* resultado; //Resultado de las instrucciones
 sem_t sProxInstruccion;
 sem_t sPlanificador;
+sem_t sAbortar;
 }t_global;
 
 t_global *global_create(int puerto) {
@@ -70,8 +74,12 @@ t_global *global_create(int puerto) {
 	new->finQuantum =0;
 	new->estaEjecutando =0;
 	new->porcentajeEjec =0;
+	new->instrucEjecutada ='X';
+	new->instrucRecibida='X';
+	new->fin=0;
 	sem_init(&(new->sProxInstruccion),0,1);
 	sem_init(&(new->sPlanificador),0,0);
+	sem_init(&(new->sAbortar),0,1);
 	return new;
 }
 

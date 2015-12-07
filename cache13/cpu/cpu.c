@@ -587,11 +587,16 @@ int AtiendeCliente(void * arg) {
 										printf("ERROR!!!! No se puede escribir \n");
 										t_global* la_global = buscarGlobalPorPuerto(puerto);
 										(la_global->finError)=1;
+										la_global->instrucRecibida='E';
+										//sem_post(&(la_global->sAbortar));
 										string_append(&(la_global->resultado),obtenerSubBuffer("30"));
 									}
 										else
 										{
 											escribirPlanificador(buffer);
+											t_global* la_global = buscarGlobalPorPuerto(puerto);
+											la_global->instrucRecibida='E';
+											//sem_post(&(la_global->sAbortar));
 										}
 
 									break;
@@ -600,21 +605,31 @@ int AtiendeCliente(void * arg) {
 										printf("ERROR!!!! No se pudo iniciar el proceso\n");
 
 										t_global* la_global = buscarGlobalPorPuerto(puerto);
+										la_global->instrucRecibida='I';
 										(la_global->finError)=1;
+										//sem_post(&(la_global->sAbortar));
 										string_append(&(la_global->resultado),obtenerSubBuffer("10"));
 									}
 									else{
 										t_global* la_global = buscarGlobalPorPuerto(puerto);
 										string_append(&(la_global->resultado),obtenerSubBuffer("11"));
+										la_global->instrucRecibida='I';
+										//sem_post(&(la_global->sAbortar));
 									}
 									break;
-								case 8:
+								case 8:{
 										leerPlanificador(buffer);
+										t_global* la_global = buscarGlobalPorPuerto(puerto);
+										la_global->instrucRecibida='L';
+										//sem_post(&(la_global->sAbortar));
+								}
 
 									break;
 								case 9:
 									{
 										t_global* la_global = buscarGlobalPorPuerto(puerto);
+										la_global->instrucRecibida='F';
+										//sem_post(&(la_global->sAbortar));
 										string_append(&(la_global->resultado),obtenerSubBuffer("5"));
 
 										if(finalizarPlanificador()==-1){
@@ -678,6 +693,10 @@ char* logFinalizacion;
 while ((getline(&line, &len, archivoMcod) != -1) && (linea!=instruccionAEjecutar)) {
 	linea++;
 }
+//Inicializo estas variables, asi la primera vez ingreso siempre.
+t_global* la_global = buscarGlobalPorPuerto(puerto);
+la_global->instrucEjecutada ='X';
+la_global->instrucRecibida='X';
 //Grabo en Log El contexto de ejecución recibido
 string_append(&logContextoEjecucion,"- DIRECCION DEL ARCHIVO: ");
 string_append(&logContextoEjecucion,direccion);
@@ -698,7 +717,10 @@ do{
 	t_global* la_global = buscarGlobalPorPuerto(puerto);
 	la_global->estaEjecutando=1;
 	//Busco en la lista por puerto, y le resto uno al semaforo para que se bloquee esperando la respuesta de memoria
+	printf("Antes: Ejecutada:%c || Recibida:%c \n",la_global->instrucEjecutada,la_global->instrucRecibida);
 	sem_wait(&(la_global->sProxInstruccion));
+	printf("Ejecutada:%c || Recibida:%c \n",la_global->instrucEjecutada,la_global->instrucRecibida);
+if(la_global->instrucEjecutada==la_global->instrucRecibida){
 	la_global->instrucRealizadasGlobal++;
 
 	printf("\n (%d) ID:%d. PID: %d|| Nro Inst: %d de %d. \n",la_global->puerto,la_global->pidGlobal,pid,la_global->instrucRealizadasGlobal,quantum);
@@ -726,6 +748,7 @@ do{
 	if (strcmp(comando[0], "iniciar") == 0) {
 		if(iniciar(CharAToInt(comando[1]),la_global->pidGlobal)==-1)
 			printf("Error, no se pudo iniciar");
+		la_global->instrucEjecutada='I';
 		string_append(&logResultado,"INICIAR. CANT PAGINAS: ");
 		string_append(&logResultado,comando[1]);
 		sleep(g_Retardo);
@@ -734,6 +757,7 @@ do{
 	if (strcmp(comando[0], "leer") == 0) {
 		if(leer(CharAToInt(comando[1]),la_global->pidGlobal)==-1)
 			printf("Error, no se pudo leer");
+		la_global->instrucEjecutada='L';
 		string_append(&logResultado,"LEER. PAGINAS: ");
 		string_append(&logResultado,comando[1]);
 		sleep(g_Retardo);
@@ -742,7 +766,7 @@ do{
 	if (strcmp(comando[0], "escribir") == 0) {
 		if(escribir(CharAToInt(comando[1]),comando2[1],la_global->pidGlobal)==-1)
 			printf("Error, no se pudo leer");
-
+		la_global->instrucEjecutada='E';
 		string_append(&logResultado,"ESCRIBIR. PAGINAS: ");
 		string_append(&logResultado,comando[1]);
 		string_append(&logResultado," CONTENIDO: ");
@@ -754,6 +778,8 @@ do{
 		if(entradaSalida(CharAToInt(comando[1]),la_global->pidGlobal)==-1)
 			printf("Error, no se pudo leer");
 		ent_sal=1;
+		la_global->instrucEjecutada='S';
+		la_global->instrucRecibida='S';
 		string_append(&logResultado,"ENTRADA-SALIDA. CANT TIEMPO: ");
 		string_append(&logResultado,comando[1]);
 		sem_post(&(la_global->sProxInstruccion)); //Entrada y salida no va a memoria entonces por eso lo libero aca.
@@ -762,6 +788,7 @@ do{
 
 	if (strcmp(comando[0], "finalizar") == 0) {
 		fin = 1;
+		la_global->instrucEjecutada='F';
 		if(finalizar(la_global->pidGlobal)==-1)
 			printf("Error, no se pudo leer");
 		string_append(&logResultado,"FIN DEL PROCESO");
@@ -769,6 +796,9 @@ do{
 	}
 
 	error = (la_global->finError);
+
+
+
 
 	//Grabo instruccion ejecutada en LOG:
 	if(error == 1){
@@ -780,7 +810,12 @@ do{
 		grabarLog(logResultado,"I");
 	}
 
-
+}else{
+	fin=1;
+	string_append(&logResultado,"||**ABORTAMOS PROCESO**||");
+	grabarLog(logResultado,"W");
+	sem_post(&(la_global->sProxInstruccion));
+}
 
 
 }while((getline(&line, &len, archivoMcod) != -1) && (error==0)&& (fin==0) && (ent_sal==0) && (pasos!=quantum)); //Fin de archivo, Error,Finalizado, Entrada/Salida, Quantum
@@ -833,6 +868,8 @@ int finQuantum(){
 	la_global->finQuantum =0;
 	la_global->estaEjecutando =0;
 	la_global->resultado=string_new();
+//	la_global->instrucEjecutada ='X';
+//	la_global->instrucRecibida='X';
 //	sem_init(&(la_global->sProxInstruccion),0,1);
 //	sem_init(&(la_global->sPlanificador),0,0);
 
@@ -908,6 +945,8 @@ int entradaSalida(int tiempo,int pid){
 	la_global->finQuantum =0;
 	la_global->estaEjecutando=0;
 	la_global->resultado=string_new();
+//	la_global->instrucEjecutada ='X';
+//	la_global->instrucRecibida='X';
 	//sem_init(&(la_global->sProxInstruccion),0,1);
 	//sem_init(&(la_global->sPlanificador),0,0);
 
@@ -946,6 +985,8 @@ int finalizarPlanificador(){
 	la_global->finQuantum =0;
 	la_global->estaEjecutando =0;
 	la_global->resultado=string_new();
+//	la_global->instrucEjecutada ='X';
+//	la_global->instrucRecibida='X';
 	//sem_init(&(la_global->sProxInstruccion),0,1);
 	//sem_init(&(la_global->sPlanificador),0,0);
 

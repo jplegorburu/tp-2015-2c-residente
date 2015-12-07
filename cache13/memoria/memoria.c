@@ -642,11 +642,11 @@ int EnviarDatos(int socket, char *buffer, int cantidadDeBytesAEnviar) {
 	//bufferLogueo[cantidadDeBytesAEnviar] = '\0';
 
 	//memcpy(bufferLogueo,buffer,cantidadDeBytesAEnviar);
-	if(strlen(buffer)<50){
+	//if(strlen(buffer)<50){
 		//log_info(logger, "ENVIO DATOS. socket: %d. Buffer:%s ",socket,(char*) buffer);
-	} else {
+	//} else {
 		//log_info(logger, "ENVIO DATOS. socket: %d. Tamanio:%d ",socket,strlen(buffer));
-	}
+	//}
 
 	return bytecount;
 }
@@ -917,7 +917,7 @@ else{
 //			printf("Prueba: Marco: %d || Mod: %d || Uso: %d \n",el_marco->frameNro,el_marco->modificado,el_marco->uso);
 //		}
 //	///de prueba
-	mostrarTabaPaginas(CharAToInt(pid));
+	//mostrarTabaPaginas(CharAToInt(pid));
 	sem_post(&sem_Operacion);
 }
 
@@ -926,7 +926,7 @@ void informarEscribir(char* buffer){
 	sem_wait(&sem_Operacion);
 	char *el_Puerto, *pid, *num_pag, *contenido;
 	int posActual = 2;
-
+	int abortar =0;
 	printf("Escribir...\n");
 
 	el_Puerto = DigitosNombreArchivo(buffer, &posActual);
@@ -1099,10 +1099,11 @@ void informarEscribir(char* buffer){
 			correrAlgoritmo(proc,entradaTablaPag, contenido, 2);
 		} else {
 			printf(COLOR_CYAN"******ABORTAR PROCESO POR FALTA DE MARCOS******"DEFAULT"\n");
-			sleep(10);
+			//sleep(10);
 			AbortarProceso(el_Puerto, pid);
+			abortar =1;
 		}
-
+if(abortar ==0){
 	//Busco la CPU en la lista donde se esta ejecutando el proceso.
 	t_cpu* la_cpu = buscarCPUporPid(CharAToInt(pid));
 	char* resultado = string_new();
@@ -1110,11 +1111,13 @@ void informarEscribir(char* buffer){
 	string_append(&resultado,obtenerSubBuffer(num_pag));
 	string_append(&resultado,obtenerSubBuffer(contenido));
 	escribirCpu(la_cpu->ip,la_cpu->puerto,resultado);
-
+}
 	}
 
 	}
-	mostrarTabaPaginas(CharAToInt(pid));
+	if(abortar ==0){
+	mostrarTabaPaginas(CharAToInt(pid));}
+
 	sem_post(&sem_Operacion);
 }
 
@@ -1231,6 +1234,7 @@ void resultadoInicioSwap(char* buffer){
 void resultadoLecturaSwap(char* buffer){
 	char *contenido, *pid, *pagina, *error;
 	int posActual = 2;
+	int abortar=0;
 
 	printf("\nResultado Lectura...\n");
 
@@ -1295,16 +1299,18 @@ void resultadoLecturaSwap(char* buffer){
 			correrAlgoritmo(proc,entradaTablaPag, contenido, 2);
 		} else {
 			printf(COLOR_MAGENTA"ABORTAR PROCESO"DEFAULT"\n");
-			sleep(10);
+			//sleep(10);
 			t_cpu* la_cpu = buscarCPUporPid(CharAToInt(pid));
 			AbortarProceso(la_cpu->puerto, pid);
+			abortar =1;
 		}
-
+if(abortar ==0){
 	//Busco la CPU en la lista donde se esta ejecutando el proceso.
 	t_cpu* la_cpu = buscarCPUporPid(CharAToInt(pid));
 	leerCpu(la_cpu->ip,la_cpu->puerto,pagina, contenido);
-
+}
 	}
+
 }
 
 void resultadoEscrituraSwap(char* buffer){
@@ -1353,6 +1359,8 @@ int finProcesoCpu(char*ip, char*puerto){
 		char* buffer = string_new();
 		string_append(&buffer,"39");
 		EnviarDatos(socket_cpu, buffer,strlen(buffer));
+		printf("Envie el msj correcto: %s \n",buffer);
+		free(buffer);
 		return 1;
 }
 
