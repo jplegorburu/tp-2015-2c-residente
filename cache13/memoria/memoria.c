@@ -833,8 +833,8 @@ void informarLeer(char* buffer){
 	//PRIMERO BUSCA EN TLB
 	if(strcmp(g_Tlb_Habilitada,"SI")==0){
 		////printf("Buscar:ID:%d, PAG:%d\n",CharAToInt(pid), CharAToInt(num_pag));
-	//	printf("Antes TLB:     \n");
-	//	mostrarTLB();
+	//      printf("Antes TLB:     \n");
+	//      mostrarTLB();
 		entradaTLB = buscarEnTLB(CharAToInt(pid), CharAToInt(num_pag));
 	}else{
 		//Si la TLB esta deshabilitada lo pongo en NULL para que vaya directo a memoria
@@ -1296,7 +1296,7 @@ void resultadoLecturaSwap(char* buffer){
 
 		} else if (list_size(proc->framesAsignados)!=0) {
 			//Si los marcos asignados al proceso estan llenos o la memoria no tiene frames correr algoritmo de remplazo
-			correrAlgoritmo(proc,entradaTablaPag, contenido, 2);
+			correrAlgoritmo(proc,entradaTablaPag, contenido, 1);
 		} else {
 			printf(COLOR_MAGENTA"ABORTAR PROCESO"DEFAULT"\n");
 			//sleep(10);
@@ -1310,6 +1310,9 @@ if(abortar ==0){
 	leerCpu(la_cpu->ip,la_cpu->puerto,pagina, contenido);
 }
 	}
+
+	if(abortar ==0){
+		mostrarTabaPaginas(CharAToInt(pid));}
 
 }
 
@@ -1619,61 +1622,62 @@ int grabarEnMemoria(int nroMarco, char * texto) {
 void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas, char* contenido, int operacion){
 	printf("\nESTOY CORRIENDO EL ALGORITMO DE REEMPLAZO!!\n");
 	//operacion es para saber si vino de lectura o escritura, 1 es lectura y 2 escritura para los bits de uso y modificacion de Clock modificado
-	if((strcmp(g_Algoritmo_Reemplazo,"FIFO"))==0 || (strcmp(g_Algoritmo_Reemplazo,"LRU"))==0){
+if((strcmp(g_Algoritmo_Reemplazo,"FIFO"))==0 || (strcmp(g_Algoritmo_Reemplazo,"LRU"))==0){
+		//FIFO y LRU se manejan igual salvo cuando leen o escriben una pagina que ya estaba cargada.
+		t_marcoProceso* el_marco =list_remove(proceso->framesAsignados,0);
+		printf("\nLA marco %d, uso %d, modif: %d\n",el_marco->frameNro, el_marco->uso,el_marco->modificado);
 
-	//FIFO y LRU se manejan igual salvo cuando leen o escriben una pagina que ya estaba cargada.
-	t_marcoProceso* el_marco =list_remove(proceso->framesAsignados,0);
-	printf("\nLA marco %d, uso %d, modif: %d\n",el_marco->frameNro, el_marco->uso,el_marco->modificado);
+		entrada_tablaPags * entrTP= buscarPaginaPorMarco(proceso, el_marco->frameNro);
+		printf("\nLA PAGINA %d, FRAME %d, PReSENTE EN MP: %d\n",entrTP->pagN, entrTP->frame,entrTP->presenteEnMemoria);
 
-	entrada_tablaPags * entrTP= buscarPaginaPorMarco(proceso, el_marco->frameNro);
-	printf("\nLA PAGINA %d, FRAME %d, PReSENTE EN MP: %d\n",entrTP->pagN, entrTP->frame,entrTP->presenteEnMemoria);
-
-	if(el_marco->modificado==1){
-		//Si el marco fue modificado cargarlo devuelta a swap
-		char * lecMP= leerEnMP(el_marco->frameNro);
-		escribirSwapReemplazo(proceso->pid,entrTP->pagN,lecMP);//TODO: Que escribirSwapReemplazo devuelva 1 para que salga t0do bien
-	}
-		//
-		if(strcmp(g_Tlb_Habilitada,"SI")==0){
-		//Reemplazo en TLBxxx
-			entrada_tlb* entradaTLB = buscarEnTLB(proceso->pid, entrTP->pagN);
-			if(entradaTLB!=NULL){
-
-				eliminoEnTLB(proceso->pid, entrTP->pagN);
-				entrada_tlb* entradaTLB = malloc(sizeof(entrada_tlb));
-				entradaTLB->frame=el_marco->frameNro;
-				entradaTLB->pid=proceso->pid;
-				entradaTLB->pagina=tPaginas->pagN;
-				list_add(TLB,entradaTLB);
-
-				//mostrarTLB()
-			}
-
+		if(el_marco->modificado==1){
+			//Si el marco fue modificado cargarlo devuelta a swap
+			char * lecMP= leerEnMP(el_marco->frameNro);
+			escribirSwapReemplazo(proceso->pid,entrTP->pagN,lecMP);//TODO: Que escribirSwapReemplazo devuelva 1 para que salga t0do bien
 		}
-	 	grabarEnMemoria(el_marco->frameNro, contenido);
-	 	t_frame * marcoModif;
-		marcoModif = buscarFramePorNumero(el_marco->frameNro);
-		marcoModif->pagina=tPaginas->pagN;
+			//
+			if(strcmp(g_Tlb_Habilitada,"SI")==0){
+			//Reemplazo en TLBxxx
+				entrada_tlb* entradaTLB = buscarEnTLB(proceso->pid, entrTP->pagN);
+				if(entradaTLB!=NULL){
 
-		tPaginas->presenteEnMemoria=1;
-		tPaginas->frame=el_marco->frameNro;
-		entrTP->presenteEnMemoria=0;
-		entrTP->frame=-1;
+					eliminoEnTLB(proceso->pid, entrTP->pagN);
+					entrada_tlb* entradaTLB = malloc(sizeof(entrada_tlb));
+					entradaTLB->frame=el_marco->frameNro;
+					entradaTLB->pid=proceso->pid;
+					entradaTLB->pagina=tPaginas->pagN;
+					list_add(TLB,entradaTLB);
 
-//		if(strcmp(g_Tlb_Habilitada,"SI")==0){
-//			//Reemplazo en TLB
-//				entrada_tlb* entradaTLB = sacarDeTLB();
-//				entradaTLB->frame=el_marco->frameNro;
-//				entradaTLB->pid=proceso->pid;
-//				entradaTLB->pagina=tPaginas->pagN;
-//				list_add(TLB,entradaTLB);
-//		}
+					//mostrarTLB()
+				}
 
-	list_add(proceso->framesAsignados,el_marco);
-	//Vuelvo a agregarlo al final de la lista
+			}
+			grabarEnMemoria(el_marco->frameNro, contenido);
+			t_frame * marcoModif;
+			marcoModif = buscarFramePorNumero(el_marco->frameNro);
+			marcoModif->pagina=tPaginas->pagN;
 
-	} //Algoritmo clock modificado
-	else if((strcmp(g_Algoritmo_Reemplazo,"CLOCK-M"))==0){
+			tPaginas->presenteEnMemoria=1;
+			tPaginas->frame=el_marco->frameNro;
+			entrTP->presenteEnMemoria=0;
+			entrTP->frame=-1;
+
+	//		if(strcmp(g_Tlb_Habilitada,"SI")==0){
+	//			//Reemplazo en TLB
+	//				entrada_tlb* entradaTLB = sacarDeTLB();
+	//				entradaTLB->frame=el_marco->frameNro;
+	//				entradaTLB->pid=proceso->pid;
+	//				entradaTLB->pagina=tPaginas->pagN;
+	//				list_add(TLB,entradaTLB);
+	//		}
+
+		list_add(proceso->framesAsignados,el_marco);
+		//Vuelvo a agregarlo al final de la lista
+
+	}
+
+//Algoritmo clock modificado
+else if((strcmp(g_Algoritmo_Reemplazo,"CLOCK-M"))==0){
 		t_marcoProceso* el_marco;
 		int primerCheck=0, segundoCheck=0, tercerCheck=0;
 		int punteroAux = punteroClock;
@@ -1758,23 +1762,6 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 		escribirSwapReemplazo(proceso->pid,entrTP->pagN,leerEnMP(el_marco->frameNro));
 	}
 
-	if(strcmp(g_Tlb_Habilitada,"SI")==0){
-	//Reemplazo en TLBxxx
-
-		entrada_tlb* entradaTLB = buscarEnTLB(proceso->pid, entrTP->pagN);
-		if(entradaTLB!=NULL){
-			eliminoEnTLB(proceso->pid, entrTP->pagN);
-			entrada_tlb* entradaTLB = malloc(sizeof(entrada_tlb));
-			entradaTLB->frame=el_marco->frameNro;
-			entradaTLB->pid=proceso->pid;
-			entradaTLB->pagina=tPaginas->pagN;
-			list_add(TLB,entradaTLB);
-		//	printf("Tamaño TLB:%d\n",list_size(TLB));
-			//mostrarTLB()
-		}
-
-	}
-
 	grabarEnMemoria(el_marco->frameNro, contenido);
 	t_frame * marcoModif;
 	marcoModif = buscarFramePorNumero(el_marco->frameNro);
@@ -1798,6 +1785,26 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 	el_marco->uso=1;
 	el_marco->modificado=1;
 	}
+
+	if(strcmp(g_Tlb_Habilitada,"SI")==0){
+		//Reemplazo en TLBxxx
+				//printf("Clock-> TLB ANTES:");
+				//mostrarTLB();
+			entrada_tlb* entradaTLB = buscarEnTLB(proceso->pid, entrTP->pagN);
+			if(entradaTLB!=NULL){
+				eliminoEnTLB(proceso->pid, entrTP->pagN);
+				//printf("Clock-> Elimine PID: %d, Pag: %d",proceso->pid, entrTP->pagN);
+				//mostrarTLB();
+				entrada_tlb* entradaTLB = malloc(sizeof(entrada_tlb));
+				entradaTLB->frame=el_marco->frameNro;
+				entradaTLB->pid=proceso->pid;
+				entradaTLB->pagina=tPaginas->pagN;
+				list_add(TLB,entradaTLB);
+			//	printf("Tamaño TLB:%d\n",list_size(TLB));
+				//printf("Clock-> TLB despues:");
+				mostrarTLB();
+			}
+
 //	aux=0;
 //	printf("Ptro quedo en: %d\n",punteroClock);
 //	while(prueba>aux){
@@ -1805,6 +1812,11 @@ void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas
 //		aux++;
 //		printf("DESPUES: Marco: %d || Mod: %d || Uso: %d \n",el_marco->frameNro,el_marco->modificado,el_marco->uso);
 //	}
+
+
+
+
+		}
 
 //	if(strcmp(g_Tlb_Habilitada,"SI")==0){
 //		//Reemplazo en TLB
@@ -1903,10 +1915,14 @@ void AtenderSenial(int s){
 	case SIGUSR1:
 	{
 		//TLB FLUSH, hilo correctamente sincronizado
+		printf("*****ANTES TLB*****\n");
+		mostrarTLB();
 		log_trace(logger,"SEÑAL RECIBIDA: SIGUSR1 - Corriendo TLB Flush");
 		pthread_t senial;
 		pthread_create(&senial, NULL, (void*)tlbFlush, NULL);
 		pthread_join(senial,NULL);
+		printf("*****DESPUES TLB*****\n");
+		mostrarTLB();
 	}
 	break;
 
