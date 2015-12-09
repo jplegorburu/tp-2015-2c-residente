@@ -634,7 +634,7 @@ char *leerPagina(int pid, int pagina){
 		}else{
 			string_append(&lectura,getPaginaDeArchivo(ocupado->paginaInicio+pagina));
 			//Retardo de SWAP
-			sleep(g_Retardo_Swap);
+			usleep(g_Retardo_Swap);
 			log_info(logger, "LECTURA PAGINA. PID: %d, Nro de Pagina: %d, Nro byte inicial: %d, Tamanio: %d, Contenido: %s", pid, pagina, ocupado->paginaInicio*g_Tam_Pags, strlen(lectura),lectura);
 		}
 	}
@@ -696,7 +696,7 @@ int escribirPagina(int pid, int pagina, char* datos){
 				setPaginaDeArchivo(ocupado->paginaInicio+pagina, datos);
 
 				//Retardo de SWAP
-				sleep(g_Retardo_Swap);
+				usleep(g_Retardo_Swap);
 
 				log_info(logger, "ESCRITURA REALIZADA. PID: %d, Nro de Pagina: %d, Nro byte inicial: %d, Tamanio: %d, Contenido: %s", pid, pagina, ocupado->paginaInicio*g_Tam_Pags, strlen(datos),datos);
 

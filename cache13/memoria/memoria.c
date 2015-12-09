@@ -621,6 +621,7 @@ char* RecibirDatos(int socket, char *buffer, int *bytesRecibidos,int *cantRafaga
 
 	log_trace(logger, "RECIBO DATOS. socket: %d. buffer: %s tamanio:%d", socket,
 	(char*) bufferAux, strlen(bufferAux));
+	printf("Mensaje recibido: %s \n",bufferAux);
 	return bufferAux; //--> buffer apunta al lugar de memoria que tiene el mensaje completo completo.
 }
 
@@ -647,7 +648,7 @@ int EnviarDatos(int socket, char *buffer, int cantidadDeBytesAEnviar) {
 	//} else {
 		//log_info(logger, "ENVIO DATOS. socket: %d. Tamanio:%d ",socket,strlen(buffer));
 	//}
-
+	printf("Mensaje enviado: %s \n",buffer);
 	return bytecount;
 }
 
@@ -869,7 +870,7 @@ else{
 	entrada_tablaProcesos * proc = buscarPorId(CharAToInt(pid));
 	//Conseguimos la entrada de la tabla de paginas:
 	entrada_tablaPags * entradaTablaPag = buscarPagina(proc, CharAToInt(num_pag));
-	 sleep(g_Retardo_Memoria); //Retardo Busqueda de pagina TODO
+	 usleep(g_Retardo_Memoria); //Retardo Busqueda de pagina TODO
 
 	if(entradaTablaPag->presenteEnMemoria==1){
 		char * content = malloc(g_Tam_Marcos);
@@ -999,7 +1000,7 @@ void informarEscribir(char* buffer){
 	entrada_tablaProcesos * proc = buscarPorId(CharAToInt(pid));
 	//Conseguimos la entrada de la tabla de paginas:
 	entrada_tablaPags * entradaTablaPag = buscarPagina(proc, CharAToInt(num_pag));
-	 sleep(g_Retardo_Memoria); //Retardo Busqueda de pagina TODO
+	 usleep(g_Retardo_Memoria); //Retardo Busqueda de pagina TODO
 
 	if(entradaTablaPag->presenteEnMemoria==1){
 
@@ -1596,7 +1597,7 @@ char* leerEnMP(int nroMarco) {
 
  //memcpy(buffer, aux, g_Tam_Marcos); //Copia el aux en buffer
  //printf("\nLA LECTURA FUE: %s\n",aux);
- sleep(g_Retardo_Memoria);
+ usleep(g_Retardo_Memoria);
  return aux;
 }
 
@@ -1615,7 +1616,7 @@ int grabarEnMemoria(int nroMarco, char * texto) {
 	 i++;
 	 printf("%c",*(memoria-1));
  }
- sleep(g_Retardo_Memoria);
+ usleep(g_Retardo_Memoria);
  return 1;
 }
 
@@ -1637,7 +1638,7 @@ if((strcmp(g_Algoritmo_Reemplazo,"FIFO"))==0 || (strcmp(g_Algoritmo_Reemplazo,"L
 		}
 			//
 			if(strcmp(g_Tlb_Habilitada,"SI")==0){
-			//Reemplazo en TLBxxx
+			//Reemplazo en TLB
 				entrada_tlb* entradaTLB = buscarEnTLB(proceso->pid, entrTP->pagN);
 				if(entradaTLB!=NULL){
 
@@ -1787,7 +1788,7 @@ else if((strcmp(g_Algoritmo_Reemplazo,"CLOCK-M"))==0){
 	}
 
 	if(strcmp(g_Tlb_Habilitada,"SI")==0){
-		//Reemplazo en TLBxxx
+		//Reemplazo en TLB
 				//printf("Clock-> TLB ANTES:");
 				//mostrarTLB();
 			entrada_tlb* entradaTLB = buscarEnTLB(proceso->pid, entrTP->pagN);
@@ -1931,6 +1932,7 @@ void AtenderSenial(int s){
 		//Limpiar completamente la memoria
 		//actualizando los bits que sean necesarios en las tablas de páginas
 		//de los diferentes procesos con un hilo correctamente sincronizado
+		//printf("Arranco señal de borrado\n");
 		log_trace(logger,"SEÑAL RECIBIDA: SIGUSR2 - Corriendo Limpieza Completa de la memoria");
 		pthread_t senial;
 		pthread_create(&senial, NULL, (void*)limpiarMemoria, NULL);
@@ -1965,22 +1967,67 @@ void AtenderSenial(int s){
 }
 
 void limpiarMemoria(void * arg) {
-	bzero(memoriaPrincipal,g_Cant_Marcos*g_Tam_Marcos*sizeof(char));
-	//Pone toda le memoria en /0
-	int i=0,j=0,k=0;
+	int i=0,j=0,k=0,l=0;
+	//PASO A SWAP:
+	char *lecMP;
 
-	while(list_size(lista_procesos)<k){
+	sem_wait(&sem_Operacion);
+	printf("Arranco con grabado en swap,cantidad de procesos:%d\n",list_size(lista_procesos));
+	while(list_size(lista_procesos)>k){
+
+			entrada_tablaProcesos* unProceso = list_get(lista_procesos, k);
+			printf("Tamaño tabla pags%d\n",list_size(unProceso->tablaPags));
+			while(list_size(unProceso->tablaPags)>j){
+			printf("Cantidad de framesasignados:%d\n",list_size(unProceso->framesAsignados));
+			while(list_size(unProceso->framesAsignados)>i){
+			entrada_tablaPags * entrada = list_get(unProceso->tablaPags,i);
+			//t_marcoProceso* el_marco =list_remove(unProceso->framesAsignados,i);
+			//printf("Marco%d, entradaframe:%d, pagn%d\n:",el_marco->frameNro,entrada->frame,entrada->pagN);
+			printf("Entradaframe:%d, pagn%d\n:",entrada->frame,entrada->pagN);
+			lecMP= leerEnMP(entrada->frame);
+			printf("Grabar en swap:ID:%d|| PagN:%d||Contenido:%s||Presente en memoria %d\n ",unProceso->pid,entrada->pagN,lecMP,entrada->presenteEnMemoria);
+			if(entrada->presenteEnMemoria==1){
+				escribirSwapReemplazo(unProceso->pid,entrada->pagN,lecMP);//TODO: Que escribirSwapReemplazo devuelva 1 para que salga t0do bien
+			}
+			i++;
+
+		};j++;
+
+
+		};
+			k++;
+}
+	printf("Arranco con borrado en MP\n");
+	//BORRO MEMORIA:
+	i=0;
+	j=0;
+	k=0;
+	l=0;
+	//printf("MP Antes %s\n",memoriaPrincipal);
+	bzero(memoriaPrincipal,g_Cant_Marcos*g_Tam_Marcos*sizeof(char));
+	//printf("MP Despues %s\n",memoriaPrincipal);
+	//Pone toda le memoria en /0
+	//printf("a2\n");
+
+	//printf("TP Antes:\n");
+	//mostrarTabaPaginas(1);
+
+	while(list_size(lista_procesos)>k){
+
+
 	//Limpio las paginas y los marcos de cada proceso.
 	entrada_tablaProcesos* unProceso = list_get(lista_procesos, k);
-
-	while(list_size(unProceso->tablaPags)<j){
+	//printf("a3\n");
+	while(list_size(unProceso->tablaPags)>j){
+		//printf("a4\n");
 	entrada_tablaPags * entrada = list_get(unProceso->tablaPags,j);
 		//Elimino las referencias a las paginas cargadas en memoria
 		entrada->frame=-1;
 		entrada->presenteEnMemoria=0;
 		j++;
 		};
-	while(list_size(unProceso->framesAsignados)!=i){
+	while(list_size(unProceso->framesAsignados)>i){
+		//printf("a5\n");
 		//Elimino los frames asignados
 		t_marcoProceso * marcoProc = list_remove(unProceso->framesAsignados,i);
 		//Libero los marcos
@@ -1989,10 +2036,32 @@ void limpiarMemoria(void * arg) {
 		marcoProceso_destroy(marcoProc);
 		i++;
 		};
+
+
 	k++;
 	}
+	//printf("TP Despues:\n");
+	//mostrarTabaPaginas(1);
 
+	if(strcmp(g_Tlb_Habilitada,"SI")==0){
+	printf("Borro TLB:\n");
+	l=0;
+//	printf("Antes TLB:     \n");
+// mostrarTLB();
+	while(list_size(TLB)>l){
+		//Elimino los frames asignados
+		entrada_tlb * entradaTLB = list_get(TLB,l);
+		entradaTLB->frame=-1;
+		entradaTLB->pagina=-1;
+		entradaTLB->pid=-1;
+		l++;
+		};
+	//printf("Despues TLB:     \n");
+	//mostrarTLB();
+	};
 
+	sem_post(&sem_Operacion);
+	printf("Fin de limpieza MP\n");
 }
 
 void tlbFlush(void * arg) {

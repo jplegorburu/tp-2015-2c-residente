@@ -22,6 +22,9 @@
 #include <arpa/inet.h>
 
 #define COLOR_VERDE   			"\x1b[32m"
+#define COLOR_ROJO   			"\x1b[41m"
+#define COLOR_MAGENTA  			"\x1b[35m"
+#define COLOR_CYAN     			"\x1b[36m"
 #define DEFAULT   				"\x1b[0m"
 #define PATH_CONFIG 			"config.cfg"		//Ruta del config
 #define NOMBRE_ARCHIVO_LOG 		"cpu.log"			//Nombre de archivo de log		//Cantidad maxima de directorios

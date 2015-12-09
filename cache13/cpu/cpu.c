@@ -752,7 +752,7 @@ if(!(la_global->instrucEjecutada!='F' && la_global->instrucRecibida=='F')){
 		la_global->instrucEjecutada='I';
 		string_append(&logResultado,"INICIAR. CANT PAGINAS: ");
 		string_append(&logResultado,comando[1]);
-		sleep(g_Retardo);
+		usleep(g_Retardo);
 	}
 
 	if (strcmp(comando[0], "leer") == 0) {
@@ -761,7 +761,7 @@ if(!(la_global->instrucEjecutada!='F' && la_global->instrucRecibida=='F')){
 		la_global->instrucEjecutada='L';
 		string_append(&logResultado,"LEER. PAGINAS: ");
 		string_append(&logResultado,comando[1]);
-		sleep(g_Retardo);
+		usleep(g_Retardo);
 	}
 
 	if (strcmp(comando[0], "escribir") == 0) {
@@ -773,7 +773,7 @@ if(!(la_global->instrucEjecutada!='F' && la_global->instrucRecibida=='F')){
 		string_append(&logResultado," CONTENIDO: ");
 		string_append(&logResultado,comando2[1]);
 
-		sleep(g_Retardo);
+		usleep(g_Retardo);
 	}
 	if (strcmp(comando[0], "entrada-salida") == 0) {
 		if(entradaSalida(CharAToInt(comando[1]),la_global->pidGlobal)==-1)
@@ -785,7 +785,7 @@ if(!(la_global->instrucEjecutada!='F' && la_global->instrucRecibida=='F')){
 		string_append(&logResultado,comando[1]);
 		printf("(%d)Libero semaforo sProxInstruccion - E/S\n",puerto);
 		sem_post(&(la_global->sProxInstruccion)); //Entrada y salida no va a memoria entonces por eso lo libero aca.
-		sleep(g_Retardo);
+		usleep(g_Retardo);
 	}
 
 	if (strcmp(comando[0], "finalizar") == 0) {
@@ -794,7 +794,7 @@ if(!(la_global->instrucEjecutada!='F' && la_global->instrucRecibida=='F')){
 		if(finalizar(la_global->pidGlobal)==-1)
 			printf("Error, no se pudo leer");
 		string_append(&logResultado,"FIN DEL PROCESO");
-		sleep(g_Retardo);
+		usleep(g_Retardo);
 	}
 
 	error = (la_global->finError);
@@ -1214,6 +1214,7 @@ while(1){
 		if(EnviarDatos(socket_Plani, buffer,strlen(buffer))==-1){
 			printf("Error al enviar porcentaje\n");
 		};
+		printf(COLOR_CYAN"ACTUALIZO PORCENTAJE"DEFAULT"\n");
 		}
 	}
 }

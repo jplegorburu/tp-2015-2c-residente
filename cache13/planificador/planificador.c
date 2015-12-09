@@ -151,7 +151,7 @@ sem_wait(&sCorrer);
 
 	}
 	//PLANIFICAR buscarCpuLibre y algoritmo de ejecucion.
-sleep(1); //Para que si copio y pego, y tengo varios hilos, me envie bien los procesos al cpu.
+ usleep(300000);; //Para que si copio y pego, y tengo varios hilos, me envie bien los procesos al cpu.
 sem_post(&sCorrer);
 return 1;
 }
