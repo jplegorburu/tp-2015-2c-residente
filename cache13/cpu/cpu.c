@@ -4,7 +4,7 @@
 int main(int argv, char** argc) {
 
 	//Archivo de Log
-	logger = log_create(NOMBRE_ARCHIVO_LOG, "CPU", true, LOG_LEVEL_TRACE);
+	logger = log_create(NOMBRE_ARCHIVO_LOG, "CPU", false, LOG_LEVEL_TRACE);
 	lista_global=list_create();
 	// Levantamos el archivo de configuracion.
 	LevantarConfig();
@@ -146,7 +146,7 @@ char* RecibirDatos(int socket, char *buffer, int *bytesRecibidos,int *cantRafaga
 		memset(bufferAux, 0, BUFFERSIZE * sizeof(char)); //-> llenamos el bufferAux con barras ceros.
 
 		if ((*bytesRecibidos = *bytesRecibidos+recv(socket, bufferAux, BUFFERSIZE, 0)) == -1) {
-			Error("Ocurrio un error al intentar recibir datos desde uno de los clientes. Socket: %d",socket);
+			//Error("Ocurrio un error al intentar recibir datos desde uno de los clientes. Socket: %d",socket);
 		}
 
 		digTamanio=PosicionDeBufferAInt(bufferAux,1);
@@ -158,7 +158,7 @@ char* RecibirDatos(int socket, char *buffer, int *bytesRecibidos,int *cantRafaga
 
 		//printf("ANTES BYTESRECIBIDO:%d\n",*bytesRecibidos);
 		if ((*bytesRecibidos = *bytesRecibidos+recv(socket, bufferAux, *tamanio, 0)) == -1) {
-			Error("Ocurrio un error al intentar recibir datos desde uno de los clientes. Socket: %d",socket);
+			//Error("Ocurrio un error al intentar recibir datos desde uno de los clientes. Socket: %d",socket);
 		}
 		//printf("DESPUES BYTESRECIBIDO:%d\n",*bytesRecibidos);
 	}
@@ -553,7 +553,7 @@ int AtiendeCliente(void * arg) {
 			//Evaluamos los comandos
 						switch (emisor) {
 						case 2:
-							//printf("\nCPU Buffer RECIBIDO: %s\n",buffer);
+							printf("\nCPU Buffer RECIBIDO: %s\n",buffer);
 							//buffer=string_new();
 							//string_append(&buffer,"22");
 							funcion = ObtenerComandoMSJ(buffer+1);
@@ -579,7 +579,7 @@ int AtiendeCliente(void * arg) {
 							break;
 						case 3:
 							//Respuestas de la Memoria
-							printf("MEMORIA Buffer RECIBIDO: %s\n",buffer);
+							printf("\nMEMORIA Buffer RECIBIDO: %s\n",buffer);
 							funcion = ObtenerComandoMSJ(buffer+1);
 							switch(funcion){
 								case 6:
@@ -648,7 +648,7 @@ int AtiendeCliente(void * arg) {
 								sem_post(&(la_global->sPlanificador));
 							}
 
-								printf("(%d)Libero semaforo sProxInstruccion - Recibi Datos\n",puerto);
+								//printf("(%d)Libero semaforo sProxInstruccion - Recibi Datos\n",puerto);
 								sem_post(&(la_global->sProxInstruccion));
 
 							//Una vez que recibo la respuesta de memoria activo el semaforo para que siga con la siguiente intruccion.
@@ -712,21 +712,20 @@ if(quantum==0){
 	string_append(&logContextoEjecucion,string_itoa(quantum));
 }
 grabarLog(logContextoEjecucion,"I");
-
+printf("Ejecutar Desde Instruccion:%d\n",instruccionAEjecutar);
 do{
 	pasos++;
 	t_global* la_global = buscarGlobalPorPuerto(puerto);
 	la_global->estaEjecutando=1;
 	//Busco en la lista por puerto, y le resto uno al semaforo para que se bloquee esperando la respuesta de memoria
-	printf("(%d)Antes: Ejecutada:%c || Recibida:%c \n",puerto,la_global->instrucEjecutada,la_global->instrucRecibida);
+	//printf("(%d)Antes: Ejecutada:%c || Recibida:%c \n",puerto,la_global->instrucEjecutada,la_global->instrucRecibida);
 	sem_wait(&(la_global->sProxInstruccion));
-	printf("(%d)Ejecutada:%c || Recibida:%c \n",puerto,la_global->instrucEjecutada,la_global->instrucRecibida);
+	//printf("(%d)Ejecutada:%c || Recibida:%c \n",puerto,la_global->instrucEjecutada,la_global->instrucRecibida);
 if(!(la_global->instrucEjecutada!='F' && la_global->instrucRecibida=='F')){
 	la_global->instrucRealizadasGlobal++;
 
-	printf("\n (%d) ID:%d. PID: %d|| Nro Inst: %d de %d. \n",la_global->puerto,la_global->pidGlobal,pid,la_global->instrucRealizadasGlobal,quantum);
+	printf("\n (%d)PID: %d|| Nro Inst: %d  (Quantum:%d). \n",la_global->puerto,la_global->pidGlobal,la_global->instrucRealizadasGlobal,quantum);
 	printf("\n RESULTADO PARCIAL: %s\n",la_global->resultado);
-
 
 	if(pasos==quantum){
 		la_global->finQuantum=1;
@@ -783,7 +782,7 @@ if(!(la_global->instrucEjecutada!='F' && la_global->instrucRecibida=='F')){
 		la_global->instrucRecibida='S';
 		string_append(&logResultado,"ENTRADA-SALIDA. CANT TIEMPO: ");
 		string_append(&logResultado,comando[1]);
-		printf("(%d)Libero semaforo sProxInstruccion - E/S\n",puerto);
+	//	printf("(%d)Libero semaforo sProxInstruccion - E/S\n",puerto);
 		sem_post(&(la_global->sProxInstruccion)); //Entrada y salida no va a memoria entonces por eso lo libero aca.
 		usleep(g_Retardo);
 	}
@@ -818,7 +817,7 @@ if(!(la_global->instrucEjecutada!='F' && la_global->instrucRecibida=='F')){
 	string_append(&logResultado,"||**ABORTAMOS PROCESO**||");
 	grabarLog(logResultado,"W");
 	free(logResultado);
-	printf("(%d)Libero semaforo sProxInstruccion - Abortamos\n",puerto);
+	//printf("(%d)Libero semaforo sProxInstruccion - Abortamos\n",puerto);
 	sem_post(&(la_global->sProxInstruccion));
 }
 
@@ -864,7 +863,7 @@ int iniciar(int paginas, int pid){
 	string_append(&buffer,obtenerSubBuffer(string_itoa(puerto)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(paginas)));
-	printf("(iniciar) ENVIADO a MEMORIA: %s\n",buffer);
+	printf("\n(iniciar) ENVIADO a MEMORIA: %s\n",buffer);
 	return EnviarDatos(socket_memoria, buffer,strlen(buffer));
 }
 
@@ -878,7 +877,7 @@ int leer(int paginas, int pid){
 	string_append(&buffer,obtenerSubBuffer(string_itoa(puerto)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(paginas)));
-	printf("(leer) ENVIADO a MEMORIA: %s\n",buffer);
+	printf("\n(leer) ENVIADO a MEMORIA: %s\n",buffer);
 	return EnviarDatos(socket_memoria, buffer,strlen(buffer));
 }
 
@@ -892,7 +891,7 @@ int escribir(int paginas,char* texto,int pid){
 	string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(paginas)));
 	string_append(&buffer,obtenerSubBuffer(texto));
-	printf("(escribir) ENVIADO a MEMORIA: %s\n",buffer);
+	printf("\n(escribir) ENVIADO a MEMORIA: %s\n",buffer);
 	return EnviarDatos(socket_memoria, buffer,strlen(buffer));
 }
 
@@ -909,7 +908,7 @@ int entradaSalida(int tiempo,int pid){
 	string_append(&buffer,obtenerSubBuffer(string_itoa(tiempo)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(la_global->instrucRealizadasGlobal)));
 	string_append(&buffer,obtenerSubBuffer(la_global->resultado));
-	printf("(Ent-Sal) ENVIADO a PLANIFICADOR: %s\n",buffer);
+	printf("\n(Ent-Sal) ENVIADO a PLANIFICADOR: %s\n",buffer);
 
 	//Reinicio las variables del hilo:
 	la_global->instrucRealizadasGlobal=0;
@@ -935,7 +934,7 @@ int finalizar(int pid){
 	string_append(&buffer,"12");
 	string_append(&buffer,obtenerSubBuffer(string_itoa(puerto)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(pid)));
-	printf("(Fin) ENVIADO a MEMORIA: %s\n",buffer);
+	printf("\n(Fin) ENVIADO a MEMORIA: %s\n",buffer);
 	return EnviarDatos(socket_Memoria, buffer,strlen(buffer));
 }
 
@@ -961,7 +960,7 @@ int finalizarPlanificador(){
 //	la_global->instrucRecibida='X';
 
 
-	printf("(FIN) ENVIADO a PLANIFICADOR: %s\n",buffer);
+	printf("\n(FIN) ENVIADO a PLANIFICADOR: %s\n",buffer);
 
 	EnviarDatos(socket_Plani, buffer,strlen(buffer));
 	//sem_init(&(la_global->sProxInstruccion),0,1);
@@ -983,7 +982,7 @@ int finQuantum(){
 	string_append(&buffer,obtenerSubBuffer(string_itoa(la_global->pidGlobal)));
 	string_append(&buffer,obtenerSubBuffer(string_itoa(la_global->instrucRealizadasGlobal)));
 	string_append(&buffer,obtenerSubBuffer(la_global->resultado));
-	printf("(Quantum) ENVIADO a PLANIFICADOR: %s\n",buffer);
+	printf("\n(Quantum) ENVIADO a PLANIFICADOR: %s\n",buffer);
 
 	//Reinicio las variables del hilo:
 	la_global->instrucRealizadasGlobal=0;

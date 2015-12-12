@@ -192,6 +192,8 @@ entrada_tlb * entrada_tlb_create(){
 
 sem_t sem_swap;
 sem_t sem_Operacion;
+sem_t sPrueba1;
+sem_t sPrueba2;
 int leerCpuError(char*ip, char*puerto);
 int conectarConSwap(int *socket_swap);
 void ConectarseConSwap(int g_puerto_memoria);
