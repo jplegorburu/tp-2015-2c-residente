@@ -473,7 +473,7 @@ void leerSwap(int pid, int num_pag){
 		//ACCESO A SWAP
 		entrada_tablaProcesos * proc = buscarPorId(pid);
 		proc->accesoSwap++;
-
+		log_trace(logger, "LEYENDO DE SWAP PID:%d|| NUM PAG:%d",pid,num_pag);
 		//AtiendeCliente((void *)socket_swap);
 
 		int bytesRecibidos;
@@ -497,7 +497,7 @@ char* leerSwapEscribir(int pid, int num_pag){
 		//ACCESO A SWAP
 		entrada_tablaProcesos * proc = buscarPorId(pid);
 		proc->accesoSwap++;
-
+		log_trace(logger, "LEYENDO DE SWAP PID:%d|| NUM PAG:%d",pid,num_pag);
 		int bytesRecibidos;
 		int cantRafaga = 1, tamanio = 0;
 		buffer = RecibirDatos(socket_swap, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
@@ -531,7 +531,7 @@ void escribirSwap(int pid, int num_pag, char* contenido){
 		//ACCESO A SWAP
 		entrada_tablaProcesos * proc = buscarPorId(pid);
 		proc->accesoSwap++;
-
+		log_trace(logger, "ESCRIBIENDO EN SWAP PID:%d || NUM PAG:%d || CONTENIDO: %s",pid,num_pag,contenido);
 		int bytesRecibidos;
 		int cantRafaga = 1, tamanio = 0;
 		buffer = RecibirDatos(socket_swap, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
@@ -553,7 +553,7 @@ void escribirSwapReemplazo(int pid, int num_pag, char* contenido){
 		//ACCESO A SWAP
 		entrada_tablaProcesos * proc = buscarPorId(pid);
 		proc->accesoSwap++;
-
+		log_trace(logger, "ESCRIBIENDO EN SWAP PID:%d || NUM PAG:%d || CONTENIDO: %s",pid,num_pag,contenido);
 		int bytesRecibidos;
 		int cantRafaga = 1, tamanio = 0;
 		buffer = RecibirDatos(socket_swap, buffer, &bytesRecibidos,&cantRafaga,&tamanio);
@@ -712,8 +712,7 @@ void informarFinDelProceso(char* buffer){
 	printf("\n PROCESO %d ELIMINADO CON %d PAGS\n", unProceso->pid,list_size(unProceso->tablaPags));
 	printf("\n ACCESO SWAP: %d FALLOS: %d\n", unProceso->accesoSwap,unProceso->falloPag);
 	printf("\n HITS:%d\n",TLBhits);
-
-
+	log_trace(logger, "FIN DE PROCESO. PID: %s || ACCESO SWAP: %d || FALLOS: %d || HITS: %d ",pid, unProceso->accesoSwap,unProceso->falloPag,TLBhits);
 
 	while(list_size(unProceso->tablaPags)!=0){
 		entrada_tablaPags * entrada = list_remove(unProceso->tablaPags,0);
@@ -788,7 +787,7 @@ void informarInicio(char* buffer){
 
 	cant_pag = DigitosNombreArchivo(buffer, &posActual);
 	printf("Cantidad paginas:%s\n", cant_pag);
-
+	log_trace(logger, "INICIO PID:%s:|| Cantidad de pagina:%s",pid,cant_pag);
 	//Agrego el proceso a la cpu correspondiente
 	t_cpu* la_cpu =buscarCPUporPuerto(el_Puerto);
 	//Busco la CPU por el puerto
@@ -827,7 +826,7 @@ void informarLeer(char* buffer){
 
 	num_pag = DigitosNombreArchivo(buffer, &posActual);
 	printf("Número pagina:%s\n", num_pag);
-
+//	log_trace(logger, "LEER PID:%s:|| Nro de pagina:%s",pid,num_pag);
 	//Agrego el proceso a la cpu correspondiente
 	t_cpu* la_cpu =buscarCPUporPuerto(el_Puerto);
 	//Busco la CPU por el puerto
@@ -849,9 +848,11 @@ void informarLeer(char* buffer){
 	}
 
 	if(entradaTLB!=NULL){
+		log_trace(logger, "LEER PID:%s:|| Nro de pagina:%s|| TLB HIT",pid,num_pag);
 		TLBhits++;
 		//mostrarTLB()
 		printf("TLB HIT!!!!\n");
+
 		char * content = malloc(g_Tam_Marcos);
 
 		content = leerEnMP(entradaTLB->frame);
@@ -867,10 +868,12 @@ void informarLeer(char* buffer){
 		//mostrarTLB();
 		t_marcoProceso* frameProc = buscarMarcoProceso(proc->framesAsignados,entradaTLB->frame);
 		frameProc->uso=1;
+		log_trace(logger, "NUMERO DE FRAME: %d",frameProc->frameNro);
 		printf("\n LEYENDO DE MP CONTENIIDO %s\n", content);
 		leerCpu(la_cpu->ip,la_cpu->puerto, num_pag, content);
 	}
 else{
+		log_trace(logger, "LEER PID:%s:|| Nro de pagina:%s",pid,num_pag);
 	//SI NO ENCUENTRA AHI....
 	//Coseguimos la entrada de la tabla de procesos:
 	entrada_tablaProcesos * proc = buscarPorId(CharAToInt(pid));
@@ -888,7 +891,7 @@ else{
 
 		t_marcoProceso* frameProc = buscarMarcoProceso(proc->framesAsignados,entradaTablaPag->frame);
 		frameProc->uso=1;
-
+		log_trace(logger, "NUMERO DE FRAME: %d",frameProc->frameNro);
 		printf("\n LEYENDO DE MP CONTENIIDO %s\n", content);
 
 		if(strcmp(g_Tlb_Habilitada,"SI")==0){
@@ -908,6 +911,7 @@ else{
 	else{
 		printf("LEYENDO DE SWAAAAP \n");
 		proc->falloPag++;
+		log_trace(logger, "FALLO DE PAGINA. PID:%s|| NUM PAG:%s",pid,num_pag);
 		leerSwap(CharAToInt(pid), CharAToInt(num_pag));
 	}
 
@@ -971,6 +975,7 @@ void informarEscribir(char* buffer){
 		entradaTLB=NULL;
 	}
 	if(entradaTLB!=NULL){
+		log_trace(logger, "ESCRIBIR PID:%s:|| Nro de pagina:%s||Contenido:%s|| TLB HIT",pid,num_pag,contenido);
 			TLBhits++;
 			//mostrarTLB()
 			printf("TLB HIT!!!!\n");
@@ -984,10 +989,11 @@ void informarEscribir(char* buffer){
 				sacarMarcoProceso(proc->framesAsignados,entradaTablaPag->frame);
 			}
 			grabarEnMemoria(entradaTLB->frame,contenido);
+
 			t_marcoProceso* frameProc = buscarMarcoProceso(proc->framesAsignados,entradaTLB->frame);
 			frameProc->modificado=1;
 			frameProc->uso=1;
-
+			log_trace(logger, "NUMERO DE FRAME ASIGNADO: %d",frameProc->frameNro);
 			//printf("\n GRABANDO EN MP CONTENIIDO %s\n", contenido);
 
 			char* resultado = string_new();
@@ -1000,7 +1006,7 @@ void informarEscribir(char* buffer){
 
 		}
 	else{
-
+	log_trace(logger, "ESCRIBIR PID:%s:|| Nro de pagina:%s||Contenido:%s",pid,num_pag,contenido);
 	//SI NO ENCUENTRA AHI....
 	//Coseguimos la entrada de la tabla de procesos:
 	entrada_tablaProcesos * proc = buscarPorId(CharAToInt(pid));
@@ -1018,7 +1024,7 @@ void informarEscribir(char* buffer){
 	t_marcoProceso* frameProc = buscarMarcoProceso(proc->framesAsignados,entradaTablaPag->frame);
 	frameProc->modificado=1;
 	frameProc->uso=1;
-
+	log_trace(logger, "NUMERO DE FRAME ASIGNADO: %d",frameProc->frameNro);
 	printf("\n GRABANDO EN MP CONTENIIDO %s\n", contenido);
 
 	char* resultado = string_new();
@@ -1054,7 +1060,7 @@ void informarEscribir(char* buffer){
 		entrada_tablaPags * entradaTablaPag = buscarPagina(proc, CharAToInt(num_pag));
 
 		proc->falloPag++;
-
+		log_trace(logger, "FALLO DE PAGINA. PID:%s|| NUM PAG:%s",pid,num_pag);
 		printf("\nLA LISTA TIENE %d MARCOS\n",list_size(proc->framesAsignados));
 		if(list_size(proc->framesAsignados)<g_Max_Marcos_Proc && buscarFrameLibre()!=NULL){
 
@@ -1086,7 +1092,7 @@ void informarEscribir(char* buffer){
 
 			frameProc->modificado=1;
 			frameProc->uso=1;
-
+			log_trace(logger, "NUMERO DE FRAME ASIGNADO: %d",frameProc->frameNro);
 			if(strcmp(g_Tlb_Habilitada,"SI")==0){
 				//Reemplazo en TLB
 
@@ -1628,6 +1634,7 @@ int grabarEnMemoria(int nroMarco, char * texto) {
 
 void correrAlgoritmo(entrada_tablaProcesos* proceso, entrada_tablaPags* tPaginas, char* contenido, int operacion){
 	printf("\nESTOY CORRIENDO EL ALGORITMO DE REEMPLAZO!!\n");
+	log_trace(logger, "CORRO ALGORITMO DE REEMPLAZO: %s",g_Algoritmo_Reemplazo);
 	//operacion es para saber si vino de lectura o escritura, 1 es lectura y 2 escritura para los bits de uso y modificacion de Clock modificado
 if((strcmp(g_Algoritmo_Reemplazo,"FIFO"))==0 || (strcmp(g_Algoritmo_Reemplazo,"LRU"))==0){
 		//FIFO y LRU se manejan igual salvo cuando leen o escriben una pagina que ya estaba cargada.
@@ -1668,7 +1675,7 @@ if((strcmp(g_Algoritmo_Reemplazo,"FIFO"))==0 || (strcmp(g_Algoritmo_Reemplazo,"L
 			tPaginas->frame=el_marco->frameNro;
 			entrTP->presenteEnMemoria=0;
 			entrTP->frame=-1;
-
+			log_trace(logger, "NUMERO DE MARCO ASIGNADO: %d",tPaginas->frame);
 	//		if(strcmp(g_Tlb_Habilitada,"SI")==0){
 	//			//Reemplazo en TLB
 	//				entrada_tlb* entradaTLB = sacarDeTLB();
@@ -1783,7 +1790,7 @@ else if((strcmp(g_Algoritmo_Reemplazo,"CLOCK-M"))==0){
 	tPaginas->frame=el_marco->frameNro;
 	entrTP->presenteEnMemoria=0;
 	entrTP->frame=-1;
-
+	log_trace(logger, "NUMERO DE MARCO ASIGNADO: %d",tPaginas->frame);
 	if(operacion==1){ //es LECTURA
 	el_marco->uso=1;
 	el_marco->modificado=0;
@@ -1847,10 +1854,11 @@ void mostrarTabaPaginas(int pid){
 	entrada_tablaProcesos *proc = malloc(sizeof(entrada_tablaProcesos));
 
 	proc = buscarPorId(pid);
-
+	log_trace(logger, "\nTABLA DE PAGINAS DE PID: %d ",pid);
 	entrada_tablaPags * entrada = list_get(proc->tablaPags, index);
 	while(entrada!=NULL){
 		printf("Frame: %d  //   Pagina: %d    //   Presente: %d\n", entrada->frame, entrada->pagN, entrada->presenteEnMemoria);
+		log_trace(logger, "(PID:%d) || Frame: %d || Pagina: %d || Presente: %d\n",pid, entrada->frame, entrada->pagN, entrada->presenteEnMemoria);
 		index++;
 		entrada = list_get(proc->tablaPags, index);
 	}
